@@ -411,13 +411,17 @@
         stopMusicAndPlayBtn?.addEventListener('click', stopMusicAndPlayVideo);
         pillStopBtn?.addEventListener('click', stopMusicAndPlayVideo);
         
-        // ========== FETCH RSS XML VIA WORKER PROXY ==========
-        const WORKER_PROXY = '/?url=';
+        // ========== FETCH RSS XML VIA CORS PROXY ==========
+        // For GitHub Pages deployment, use public CORS proxy
+        // For Cloudflare Workers deployment, use local proxy
+        const WORKER_PROXY = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+            ? '/?url=' 
+            : 'https://api.allorigins.win/raw?url=';
         const RSS_FEED_URL = 'https://rss.alexjones.media/AJNHourlyVideo.xml';
         
         async function fetchRSSFeed() {
-            feedStatusSpan.innerHTML = '馃摗 Fetching RSS feed via Cloudflare Worker...';
-            updateProxyStatus('Connecting to worker proxy...');
+            feedStatusSpan.innerHTML = '馃摗 Fetching RSS feed via proxy...';
+            updateProxyStatus('Connecting to proxy...');
             try {
                 const response = await fetch(WORKER_PROXY + encodeURIComponent(RSS_FEED_URL));
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
