@@ -1,7 +1,11 @@
 # AJN Archive Player – Complete Deployment Guide
 
+> ⚠️ **IMPORTANT:** GitHub Pages alone will NOT work (videos/audio won't load). You MUST deploy to **Cloudflare Workers** for CORS proxy support.
+>
+> 👉 **START HERE:** See `DEPLOY_TO_CLOUDFLARE.md` for quick setup (5 minutes)
+
 A modern, self‑hosted video archive player for the AJN Hourly Feed.  
-Uses **GitHub Pages** for static hosting, a **Cloudflare Worker** as a CORS proxy for the RSS feed, and a **Service Worker** for offline caching and instant updates.
+Uses **Cloudflare Workers** as primary CORS proxy (recommended), **GitHub Pages** as backup static hosting, and a **Service Worker** for offline caching and instant updates.
 
 ---
 
