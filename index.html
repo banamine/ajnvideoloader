@@ -3,722 +3,454 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>AJN  Player Sirius Edition  + Weekends</title>
-    <meta name="description" content="AJN Hourly Video Archive - Full feed with weekend shows and robust CORS proxy handling">
-    <meta name="theme-color" content="#0a0f1c">
+    <title>AJN Archive · IPTV Professional Player</title>
+    <meta name="description" content="Unified IPTV + AJN Video Archive | RSS, M3U, HLS, DASH, Proxy Chain & Sirius Overlay">
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
-        body { background: #0a0f1c; }
-        .player-container { background: #000; border-radius: 1.2rem; overflow: hidden; position: relative; }
-        .segment-item { transition: all 0.2s ease; cursor: pointer; }
-        .segment-item:hover { background: #1e293b; transform: translateX(4px); }
-        .segment-active { background: #0f2b3d; border-left: 3px solid #3b82f6; }
-        .playlist-scroll { max-height: 400px; overflow-y: auto; scrollbar-width: thin; }
-        .playlist-scroll::-webkit-scrollbar { width: 5px; }
-        .playlist-scroll::-webkit-scrollbar-track { background: #1e293b; }
-        .playlist-scroll::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
-        .update-toast {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background: #1e293b; border: 1px solid #3b82f6; border-radius: 50px;
-            padding: 12px 24px; display: flex; gap: 16px; align-items: center;
-            z-index: 9999; backdrop-filter: blur(10px); animation: slideUp 0.3s ease;
+        /* ===== BASE IPTV STYLES (enhanced) ===== */
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #dc2626;
+            --dark-color: #0f172a;
+            --light-color: #f8fafc;
+            --sidebar-width: 320px;
+            --gold-color: #ffd700;
+            --gold-light: #ffec8b;
         }
-        @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-        .flatpickr-calendar { background: #1e293b !important; border-color: #334155 !important; }
-        .flatpickr-day { color: #cbd5e1 !important; }
-        .flatpickr-day.selected { background: #3b82f6 !important; }
-        .flatpickr-day.today { border-color: #10b981 !important; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--dark-color); color: var(--light-color); min-height: 100vh; display: flex; overflow: hidden; }
+        body.light { background: #e2e8f0; color: #1e293b; }
         
-        .music-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(10, 15, 28, 0.94);
-            backdrop-filter: blur(12px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            z-index: 20;
-            transition: opacity 0.6s ease;
-        }
-        .music-overlay-content {
-            text-align: center;
-            padding: 2rem;
-            background: rgba(30, 41, 59, 0.75);
-            border-radius: 2rem;
-            border: 1px solid #3b82f6;
-            max-width: 85%;
-            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.5);
-        }
-        .vinyl-spinner {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, #1e293b, #0f172a);
-            box-shadow: 0 0 0 4px #334155, 0 0 0 8px #1e293b;
-            margin: 0 auto 20px auto;
-            animation: spin 2s linear infinite;
-            position: relative;
-        }
-        .vinyl-spinner::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 12px;
-            height: 12px;
-            background: #3b82f6;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-        }
+        /* Sidebars */
+        .sidebar { width: var(--sidebar-width); background: rgba(15, 23, 42, 0.95); border-right: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: transform 0.3s ease; backdrop-filter: blur(10px); z-index: 100; overflow-y: auto; height: 100vh; }
+        body.light .sidebar { background: rgba(255,255,255,0.95); border-right: 1px solid rgba(0,0,0,0.1); }
+        .sidebar.hidden { transform: translateX(-100%); width: 0; }
+        
+        .secondary-sidebar { width: var(--sidebar-width); background: rgba(15,23,42,0.95); border-left: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: transform 0.3s ease; backdrop-filter: blur(10px); z-index: 100; overflow-y: auto; height: 100vh; position: fixed; right: 0; top: 0; transform: translateX(100%); }
+        .secondary-sidebar.active { transform: translateX(0); }
+        body.light .secondary-sidebar { background: rgba(255,255,255,0.95); border-left: 1px solid rgba(0,0,0,0.1); }
+        
+        .sidebar-header, .secondary-sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .sidebar-title { font-size: 1.4rem; font-weight: bold; color: var(--primary-color); }
+        
+        .tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.2s; }
+        .tab.active { border-bottom-color: var(--primary-color); color: var(--primary-color); }
+        .tab-content { flex: 1; overflow-y: auto; padding: 15px; display: none; }
+        .tab-content.active { display: block; }
+        
+        /* Archive specific styles (AJN) */
+        .archive-date-picker { margin-bottom: 20px; }
+        .archive-playlist { max-height: 380px; overflow-y: auto; scrollbar-width: thin; }
+        .archive-segment { transition: all 0.2s ease; cursor: pointer; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 8px; padding: 12px; border-left: 3px solid transparent; }
+        .archive-segment:hover { background: #1e293b; transform: translateX(4px); }
+        .archive-segment-active { background: #0f2b3d; border-left-color: #3b82f6; }
+        body.light .archive-segment { background: rgba(0,0,0,0.05); }
+        body.light .archive-segment:hover { background: #e2e8f0; }
+        
+        /* Sirius Music Overlay */
+        .music-overlay-global { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,15,28,0.96); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000; transition: opacity 0.5s ease; flex-direction: column; pointer-events: auto; }
+        .music-overlay-content { text-align: center; padding: 2rem; background: rgba(30,41,59,0.9); border-radius: 2rem; border: 1px solid #3b82f6; max-width: 90%; box-shadow: 0 25px 40px -12px black; }
+        .vinyl-spinner { width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #1e293b, #0f172a); box-shadow: 0 0 0 4px #334155, 0 0 0 8px #1e293b; margin: 0 auto 20px; animation: spin 2s linear infinite; }
+        .vinyl-spinner::after { content: ""; position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; background: #3b82f6; border-radius: 50%; transform: translate(-50%, -50%); }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .pulse-wave {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            margin-top: 16px;
-        }
-        .pulse-wave span {
-            width: 4px;
-            height: 20px;
-            background: #3b82f6;
-            border-radius: 2px;
-            animation: wave 0.8s ease-in-out infinite;
-        }
+        .pulse-wave { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+        .pulse-wave span { width: 4px; height: 20px; background: #3b82f6; border-radius: 2px; animation: wave 0.8s ease-in-out infinite; }
         .pulse-wave span:nth-child(2) { animation-delay: 0.1s; height: 30px; }
         .pulse-wave span:nth-child(3) { animation-delay: 0.2s; height: 25px; }
-        .pulse-wave span:nth-child(4) { animation-delay: 0.3s; height: 35px; }
-        .pulse-wave span:nth-child(5) { animation-delay: 0.4s; height: 20px; }
-        @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
-        .overlay-title {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #e2e8f0;
-            margin: 16px 0 8px;
-        }
-        .overlay-sub {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            margin-bottom: 20px;
-        }
-        .stop-music-btn, .init-audio-btn, .retry-fetch-btn {
-            border: none;
-            border-radius: 40px;
-            padding: 10px 24px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 4px;
-        }
-        .stop-music-btn { background: #ef4444; color: white; }
+        @keyframes wave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+        .stop-music-btn { background: #ef4444; color: white; border: none; border-radius: 40px; padding: 10px 24px; font-weight: bold; cursor: pointer; margin-top: 16px; }
         .stop-music-btn:hover { background: #dc2626; transform: scale(1.02); }
-        .init-audio-btn { background: #10b981; color: white; }
-        .init-audio-btn:hover { background: #059669; transform: scale(1.02); }
-        .retry-fetch-btn { background: #f59e0b; color: #0f172a; }
-        .retry-fetch-btn:hover { background: #d97706; transform: scale(1.02); }
-        .system-ready-btn {
-            background: #22c55e;
-            box-shadow: 0 0 15px rgba(34,197,94,0.5);
-            animation: pulse-green 1.2s infinite;
-        }
-        @keyframes pulse-green { 0%, 100% { box-shadow: 0 0 5px #22c55e; } 50% { box-shadow: 0 0 20px #22c55e; } }
-        .hidden-overlay { opacity: 0; pointer-events: none; }
-        .hidden { display: none !important; }
+        .hidden-overlay { display: none !important; }
         
-        .audio-pill {
-            position: fixed;
-            bottom: 16px;
-            right: 16px;
-            z-index: 10000;
-            background: rgba(30, 41, 59, 0.95);
-            backdrop-filter: blur(8px);
-            border-radius: 40px;
-            padding: 6px 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid #3b82f6;
-            font-size: 11px;
-        }
-        .audio-pill button {
-            background: #ef4444;
-            border: none;
-            border-radius: 30px;
-            padding: 3px 12px;
-            color: white;
-            font-size: 10px;
-            cursor: pointer;
-        }
-        .fade-out { opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
-        .proxy-status {
-            font-size: 9px;
-            color: #94a3b8;
-            margin-top: 8px;
-            word-break: break-word;
-        }
-        .date-input {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 9999px;
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-            color: #e2e8f0;
-            cursor: pointer;
-            width: 140px;
-            text-align: center;
-        }
-        .date-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-        }
+        /* Main content & player */
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow-y: auto; height: 100vh; transition: margin 0.3s ease; }
+        .player-container { flex: 1; background: #000; display: flex; justify-content: center; align-items: center; position: relative; min-height: 400px; }
+        #player { max-width: 100%; max-height: 100%; width: 100%; height: auto; object-fit: contain; }
+        .top-bar { position: sticky; top: 0; padding: 12px 20px; display: flex; justify-content: space-between; background: rgba(15,23,42,0.95); backdrop-filter: blur(10px); z-index: 50; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .icon-btn, .control-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .gold-info-bar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); border: 1px solid var(--gold-color); border-radius: 20px; padding: 8px 20px; backdrop-filter: blur(10px); z-index: 20; display: flex; gap: 20px; font-size: 0.8rem; color: var(--gold-light); pointer-events: none; }
+        .gold-info-section { display: flex; gap: 8px; align-items: center; }
+        .player-controls { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 20px; display: flex; gap: 12px; justify-content: center; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .player-container:hover .player-controls { opacity: 1; pointer-events: auto; }
+        input, button, select { padding: 8px 12px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: inherit; margin-bottom: 8px; width: 100%; }
+        button { background: var(--primary-color); cursor: pointer; font-weight: 600; }
+        .channel-list, .favorites-list, .history-list { max-height: 300px; overflow-y: auto; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        .debug-console { position: fixed; bottom: 0; left: 0; right: 0; background: #000000dd; color: #0f0; font-family: monospace; font-size: 11px; max-height: 130px; overflow-y: auto; z-index: 9999; display: none; padding: 8px; }
+        .debug-console.active { display: block; }
+        .date-input { background: #1e293b; border: 1px solid #334155; border-radius: 9999px; padding: 8px 16px; font-size: 0.8rem; width: 100%; cursor: pointer; }
     </style>
 </head>
-<body class="font-sans antialiased text-gray-200">
-
-    <div id="audioPill" class="audio-pill" style="display: none;">
-        <span class="status-text">馃幍 Sirius</span>
-        <button id="pillStopBtn">Stop</button>
+<body>
+    <!-- LEFT SIDEBAR (IPTV + Archive Tabs) -->
+    <div class="sidebar">
+        <div class="sidebar-header"><div class="sidebar-title">UNIFIED PLAYER</div><div class="text-xs opacity-70">IPTV + AJN Archive</div></div>
+        <div class="tabs">
+            <div class="tab active" data-tab="playlist">📡 Playlist</div>
+            <div class="tab" data-tab="favorites">⭐ Favorites</div>
+            <div class="tab" data-tab="history">📜 History</div>
+            <div class="tab" data-tab="archive">🗄️ AJN Archive</div>
+        </div>
+        
+        <!-- Playlist Tab -->
+        <div class="tab-content active" id="playlist-tab">
+            <input type="file" id="fileInput" accept=".m3u,.m3u8,.json,.txt">
+            <input type="text" id="urlInput" placeholder="M3U / Video URL">
+            <button id="loadUrl">📎 Load from URL</button>
+            <input type="text" id="searchInput" placeholder="🔍 Search channels">
+            <div class="channel-list" id="channelList"></div>
+        </div>
+        
+        <!-- Favorites Tab -->
+        <div class="tab-content" id="favorites-tab">
+            <button id="exportFavoritesBtn">💾 Export Favorites</button>
+            <div class="favorites-list" id="favoritesList"></div>
+        </div>
+        
+        <!-- History Tab -->
+        <div class="tab-content" id="history-tab">
+            <div class="history-list" id="historyList"></div>
+            <button id="deleteAllHistoryBtn" class="bg-red-600/40 mt-2">🗑️ Clear History</button>
+        </div>
+        
+        <!-- AJN ARCHIVE TAB (NEW) -->
+        <div class="tab-content" id="archive-tab">
+            <div class="archive-date-picker">
+                <label class="text-xs font-bold">📅 Select Date (RSS Archive)</label>
+                <input type="text" id="archiveDatePicker" class="date-input" placeholder="Pick a date" readonly>
+            </div>
+            <div class="flex gap-2 mt-2">
+                <button id="refreshArchiveBtn" class="bg-emerald-600">🔄 Refresh Archive Feed</button>
+                <button id="stopMusicBtn" class="bg-rose-600">🎵 Stop Sirius Music</button>
+            </div>
+            <div class="mt-3">
+                <div class="flex justify-between text-xs"><span>📺 Episodes</span><span id="archiveSegmentCount">0</span></div>
+                <div id="archivePlaylistContainer" class="archive-playlist mt-2 space-y-2"></div>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-2" id="archiveProxyStatus"></div>
+        </div>
+        
+        <div class="sidebar-footer text-xs p-3 text-center opacity-60">Proxy Chain: allorigins.win + fallback</div>
     </div>
-
-    <div id="update-toast" style="display: none;" class="update-toast">
-        <span>馃攧 New dates available!</span>
-        <button id="refresh-cache-btn" class="bg-blue-600 px-4 py-1 rounded-full text-sm">Refresh</button>
+    
+    <!-- RIGHT SETTINGS SIDEBAR -->
+    <div class="secondary-sidebar" id="secondarySidebar">
+        <div class="secondary-sidebar-header"><div class="secondary-sidebar-title">⚙️ Engine</div></div>
+        <div class="p-4">
+            <label>Stream Type</label><select id="streamType"><option value="auto">Auto</option><option value="hls">HLS</option><option value="dash">DASH</option><option value="native">Native</option></select>
+            <label>Fallback Mode</label><select id="fallbackMode"><option value="enabled">Enabled</option><option value="disabled">Disabled</option></select>
+            <label>Debug Mode</label><select id="debugMode"><option value="off">Off</option><option value="on">On</option></select>
+            <button id="resetPlayerBtn">🔄 Reset Player</button>
+            <button id="clearCacheBtn">🗑️ Clear Cache</button>
+            <div class="mt-3 text-xs"><span>Player Status:</span><span id="playerStatus">Idle</span></div>
+        </div>
     </div>
-
-    <main id="main-content">
-        <div class="max-w-7xl mx-auto px-4 py-5 md:py-7">
-            <header class="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-800 pb-5 mb-6">
-                <div>
-                    <h1 class="text-3xl font-extrabold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">AJN Archive Player  Full Archive</h1>
-                    <p class="text-sm text-slate-400">Alex Jones + WarRoom + Sunday Night Live  RSS XML + Worker Proxy</p>
-                </div>
-                <div class="flex items-center gap-3">
-                    <input type="text" id="datePickerInput" class="date-input" placeholder="Pick a date" readonly>
-                    <div class="text-xs bg-slate-800 px-3 py-1.5 rounded-full">
-                        <span id="feed-status">Initializing...</span>
-                    </div>
-                </div>
-            </header>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2">
-                    <div class="player-container bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden relative">
-                        <div class="bg-black aspect-video relative">
-                            <video id="main-video" controls class="w-full h-full object-contain" poster="https://placehold.co/1280x720/0f172a/3b82f6?text=AJN+Archive"></video>
-                            
-                            <div id="musicOverlay" class="music-overlay" style="display: none;">
-                                <div class="music-overlay-content">
-                                    <div class="vinyl-spinner"></div>
-                                    <div class="pulse-wave">
-                                        <span></span><span></span><span></span><span></span><span></span>
-                                    </div>
-                                    <div class="overlay-title">馃幍 The Alan Parsons Project  Sirius</div>
-                                    <div class="overlay-sub" id="overlayStatusMsg">Loading AJN full archive 鈥?please wait</div>
-                                    <div class="flex flex-col gap-2 max-w-xs mx-auto">
-                                        <button id="startAudioBtn" class="init-audio-btn hidden">馃攰 Initialize Audio Stream</button>
-                                        <button id="stopMusicAndPlayBtn" class="stop-music-btn">鈴?Stop Music & Play Video</button>
-                                        <button id="manualRetryBtn" class="retry-fetch-btn hidden">馃攧 Retry Archive Fetch</button>
-                                    </div>
-                                    <div id="proxyStatusMsg" class="proxy-status"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="p-4 bg-slate-800/80 border-t border-slate-700">
-                            <div class="flex flex-wrap justify-between items-center gap-3">
-                                <div class="flex-1 min-w-0">
-                                    <h2 id="current-title" class="text-white font-bold text-lg truncate">Select a date to begin</h2>
-                                    <div class="flex items-center gap-3 mt-1">
-                                        <span id="position-badge" class="text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">0 / 0</span>
-                                    </div>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button id="prev-segment-btn" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-full text-sm transition">鈼€ Prev</button>
-                                    <button id="next-segment-btn" class="bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-full text-sm transition">Next 鈻?/button>
-                                </div>
-                            </div>
-                            <div class="mt-3 w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                                <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden flex flex-col h-[560px]">
-                    <div class="bg-slate-950 px-4 py-3 border-b border-slate-800 flex justify-between">
-                        <h3 class="font-bold text-white text-sm">馃搵 Playlist  Weekends Included</h3>
-                        <span id="segment-count" class="text-[11px] text-slate-400">0 items</span>
-                    </div>
-                    <div id="playlist-container" class="playlist-scroll p-2 space-y-2 flex-1">
-                        <div class="text-center text-slate-500 text-sm py-10 italic">Loading episodes from RSS feed...</div>
-                    </div>
-                </div>
+    
+    <!-- MAIN CONTENT: VIDEO PLAYER + GOLD BAR + OVERLAYS -->
+    <div class="main-content" id="mainContent">
+        <div class="top-bar">
+            <div><button id="toggleSidebarBtn" class="icon-btn"><i data-feather="menu"></i></button>
+            <button id="toggleSettingsBtn" class="icon-btn"><i data-feather="settings"></i></button>
+            <button id="toggleThemeBtn" class="icon-btn"><i data-feather="moon"></i></button></div>
+            <div class="local-time" id="localTime">--:--</div>
+        </div>
+        <div class="player-container">
+            <div class="gold-info-bar" id="goldInfoBar">
+                <div class="gold-info-section"><span class="gold-info-title">NOW:</span><span id="goldCurrentTime">--:--:--</span></div>
+                <div class="gold-info-section"><span class="gold-info-title">PLAYING:</span><span id="goldCurrentChannel">No Channel</span></div>
+                <div class="gold-info-section"><span class="gold-info-title">⏱️ NEXT:</span><span id="goldNextShow">Archive</span><span id="goldCountdown">--:--</span></div>
+            </div>
+            <video id="player" controls poster="https://placehold.co/1280x720/0f172a/3b82f6?text=AJN+IPTV">Your browser does not support video.</video>
+            <div class="player-controls">
+                <button class="control-btn" id="prevChannelBtn"><i data-feather="skip-back"></i></button>
+                <button class="control-btn" id="playPauseBtn"><i data-feather="play"></i></button>
+                <button class="control-btn" id="nextChannelBtn"><i data-feather="skip-forward"></i></button>
             </div>
         </div>
-    </main>
+    </div>
+    
+    <!-- SIRIUS MUSIC OVERLAY (AJN STYLE) -->
+    <div id="siriusOverlay" class="music-overlay-global hidden-overlay">
+        <div class="music-overlay-content">
+            <div class="vinyl-spinner"></div>
+            <div class="pulse-wave"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="overlay-title text-white text-xl font-bold mt-2">🎵 The Alan Parsons Project · Sirius</div>
+            <div id="overlayStatusMsg" class="text-sm text-slate-300">Initializing AJN Archive Matrix...</div>
+            <button id="stopMusicAndPlayArchiveBtn" class="stop-music-btn mt-4">▶️ Stop Music & Play Video</button>
+            <button id="manualRetryArchiveBtn" class="retry-fetch-btn bg-amber-600 mt-2 hidden">🔄 Retry Archive Fetch</button>
+        </div>
+    </div>
+    
+    <!-- DEBUG CONSOLE -->
+    <div id="debugConsole" class="debug-console"></div>
 
     <script>
-        // ========== ALL STATE VARIABLES ==========
-        let allEpisodes = [];          // raw episodes from RSS
-        let episodesByDate = {};       // grouped by YYYY-MM-DD
+        // ======================== GLOBAL STATE ========================
+        let allChannels = [];
+        let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+        let history = JSON.parse(localStorage.getItem('history') || '[]');
+        let currentChannelUrl = null;
+        let hlsPlayer = null, dashPlayer = null;
+        
+        // AJN Archive specific
+        let allArchiveEpisodes = [];       // raw episodes
+        let episodesByDate = {};
         let availableDates = [];
-        let currentFilterDate = null;
-        let currentPlaylist = [];
-        let currentIndex = 0;
+        let currentArchivePlaylist = [];
+        let currentArchiveIndex = 0;
         let flatpickrInstance = null;
+        let archiveFetchInProgress = false;
         
-        // Audio / UI elements
-        let audioElement = null;
-        let loadingStarted = false;
-        let backgroundFetchComplete = false;
-        let fetchInProgress = false;
+        // Sirius Audio
+        let siriusAudio = null;
+        let isSiriusPlaying = false;
         
-        const musicOverlay = document.getElementById('musicOverlay');
-        const overlayStatusMsg = document.getElementById('overlayStatusMsg');
-        const stopMusicAndPlayBtn = document.getElementById('stopMusicAndPlayBtn');
-        const startAudioBtn = document.getElementById('startAudioBtn');
-        const manualRetryBtn = document.getElementById('manualRetryBtn');
-        const audioPill = document.getElementById('audioPill');
-        const pillStopBtn = document.getElementById('pillStopBtn');
-        const videoPlayer = document.getElementById('main-video');
-        const proxyStatusSpan = document.getElementById('proxyStatusMsg');
-        const currentTitleSpan = document.getElementById('current-title');
-        const positionBadge = document.getElementById('position-badge');
-        const progressFill = document.getElementById('progress-bar');
-        const feedStatusSpan = document.getElementById('feed-status');
-        const segmentCountSpan = document.getElementById('segment-count');
-        const playlistContainer = document.getElementById('playlist-container');
-        const datePickerInput = document.getElementById('datePickerInput');
+        // Player settings
+        let playerState = { streamType: 'auto', fallbackMode: 'enabled', debugMode: 'off' };
         
-        // ========== UTILITIES ==========
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
+        // Helper: Debug log
+        function debugLog(msg, type='info') { 
+            const consoleDiv = document.getElementById('debugConsole');
+            if(playerState.debugMode === 'on' && consoleDiv){
+                const entry = document.createElement('div');
+                entry.className = `debug-${type}`;
+                entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                consoleDiv.appendChild(entry);
+                consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            }
+            console.log(`[${type}] ${msg}`);
         }
         
-        function formatDateKey(date) {
-            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+        // ========== SIRIUS AUDIO ENGINE ==========
+        const SIRIUS_URLS = [
+            'https://raw.githubusercontent.com/banamine/AJN-Resource-Hub/main/The%20Alan%20Parsons%20Project%20-%20Sirius%20(Official%20Audio).mp3',
+            'https://archive.org/download/a-132-5_20260424/1.%20The%20Alan%20Parsons%20Project%20-%20Sirius%20%28Official%20Audio%29.mp4'
+        ];
+        function initSiriusAudio() { if(!siriusAudio) { siriusAudio = new Audio(); siriusAudio.loop = true; siriusAudio.volume = 0.3; } }
+        async function startSiriusMusic() {
+            if(!siriusAudio) initSiriusAudio();
+            try { await siriusAudio.play(); siriusAudio.currentTime = 25; isSiriusPlaying = true; } catch(e) { debugLog("Sirius autoplay blocked", "warning"); }
+        }
+        function stopSiriusMusic() { if(siriusAudio) { siriusAudio.pause(); siriusAudio.currentTime = 0; isSiriusPlaying = false; } }
+        
+        // Show/hide overlay
+        function showSiriusOverlay(show, msg="Loading Archive...") {
+            const overlay = document.getElementById('siriusOverlay');
+            if(show) {
+                overlay.classList.remove('hidden-overlay');
+                document.getElementById('overlayStatusMsg').innerText = msg;
+                startSiriusMusic();
+            } else { overlay.classList.add('hidden-overlay'); stopSiriusMusic(); }
         }
         
-        function formatDisplayDate(dateStr) { // expects YYYY-MM-DD
-            const parts = dateStr.split('-');
-            return `${parts[1]}/${parts[2]}/${parts[0]}`;
-        }
-        
-        // Parse show/hour from title (e.g., "Alex Jones Show Hr1")
-        function parseShowAndHour(title) {
-            let show = 'Unknown';
-            let hour = '';
-            const lower = title.toLowerCase();
-            if (lower.includes('war room')) show = 'War Room';
-            else if (lower.includes('sunday night live') || lower.includes('snl')) show = 'Sunday Night Live';
-            else if (lower.includes('alex jones')) show = 'Alex Jones';
-            
-            const hourMatch = title.match(/Hr(\d)/i);
-            if (hourMatch) hour = `Hr${hourMatch[1]}`;
-            return { show, hour };
-        }
-        
-        // ========== SIRIUS AUDIO (with CORS fix) ==========
-        const SIRIUS_PRIMARY = 'https://raw.githubusercontent.com/banamine/AJN-Resource-Hub/main/The%20Alan%20Parsons%20Project%20-%20Sirius%20(Official%20Audio).mp3';
-        const SIRIUS_FALLBACK = 'https://archive.org/download/a-132-5_20260424/1.%20The%20Alan%20Parsons%20Project%20-%20Sirius%20%28Official%20Audio%29.mp4';
-        const SEEK_TO_SECONDS = 25;
-        
-        function initSiriusAudio() {
-            if (audioElement) return;
-            audioElement = new Audio();
-            audioElement.crossOrigin = 'anonymous';  // Enable CORS for audio
-            audioElement.loop = true;
-            audioElement.volume = 0.28;
-            const loadAudio = (url) => {
-                audioElement.src = url;
-                audioElement.load();
-                console.log('Loading audio:', url);
-                audioElement.addEventListener('canplay', () => {
-                    if (audioElement.duration > SEEK_TO_SECONDS) audioElement.currentTime = SEEK_TO_SECONDS;
-                    console.log('Audio ready');
-                }, { once: true });
-            };
-            loadAudio(SIRIUS_PRIMARY);
-            audioElement.addEventListener('error', (err) => {
-                console.error('Audio error:', err, audioElement.error);
-                if (currentAudioSource === 0) {
-                    currentAudioSource = 1;
-                    console.log('Trying fallback audio...');
-                    loadAudio(SIRIUS_FALLBACK);
-                } else {
-                    if (overlayStatusMsg) overlayStatusMsg.textContent = '🎵 Sirius audio unavailable (using fallback)';
-                    console.error('Both audio sources failed');
-                }
-            });
-        }
-        let currentAudioSource = 0;
-        
-        async function startSiriusAndOverlay() {
-            if (!audioElement) initSiriusAudio();
-            if (musicOverlay) {
-                musicOverlay.style.display = 'flex';
-                setTimeout(() => musicOverlay.classList.remove('hidden-overlay'), 10);
-            }
-            if (audioPill) audioPill.style.display = 'flex';
-            try {
-                await audioElement.play();
-                if (audioElement.currentTime < SEEK_TO_SECONDS && audioElement.duration > SEEK_TO_SECONDS) {
-                    audioElement.currentTime = SEEK_TO_SECONDS;
-                }
-                startAudioBtn.classList.add('hidden');
-                if (overlayStatusMsg) overlayStatusMsg.textContent = '馃帣锔?Streaming AJN Matrix Interlude...';
-            } catch (autoplayError) {
-                if (overlayStatusMsg) overlayStatusMsg.textContent = '馃攪 Browser blocked autoplay 鈥?click below to activate audio.';
-                startAudioBtn.classList.remove('hidden');
-            }
-        }
-        
-        function stopMusicAndPlayVideo() {
-            if (audioElement) {
-                audioElement.pause();
-                audioElement.currentTime = 0;
-            }
-            if (musicOverlay) {
-                musicOverlay.classList.add('hidden-overlay');
-                setTimeout(() => { if(musicOverlay) musicOverlay.style.display = 'none'; }, 600);
-            }
-            if (audioPill) {
-                audioPill.classList.add('fade-out');
-                setTimeout(() => { if(audioPill) audioPill.style.display = 'none'; }, 600);
-            }
-            if (currentPlaylist.length && currentIndex !== undefined) {
-                loadVideoByIndex(currentIndex);
-            } else if (backgroundFetchComplete && currentPlaylist.length) {
-                loadVideoByIndex(0);
-            }
-        }
-        
-        startAudioBtn?.addEventListener('click', async () => {
-            if (audioElement) {
-                try {
-                    await audioElement.play();
-                    if (audioElement.duration > SEEK_TO_SECONDS) audioElement.currentTime = SEEK_TO_SECONDS;
-                    startAudioBtn.classList.add('hidden');
-                    if (overlayStatusMsg) overlayStatusMsg.textContent = '馃帣锔?Streaming AJN Matrix Interlude...';
-                } catch(e) {}
-            }
-        });
-        stopMusicAndPlayBtn?.addEventListener('click', stopMusicAndPlayVideo);
-        pillStopBtn?.addEventListener('click', stopMusicAndPlayVideo);
-        
-        // ========== FETCH RSS XML VIA CORS PROXY ==========
-        // For GitHub Pages deployment, use reliable public CORS proxy
-        // For Cloudflare Workers deployment, use local proxy
-        const RSS_FEED_URL = 'https://rss.alexjones.media/AJNHourlyVideo.xml';
-        
-        // Build proxy URL list — local Worker first, then reliable public fallbacks
-        function buildProxyList(targetUrl) {
-            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const isCloudflareWorker = window.location.hostname.endsWith('.workers.dev') || window.location.hostname.endsWith('.pages.dev');
-            if (isLocalhost || isCloudflareWorker) {
-                // Use the deployed Worker's own CORS proxy endpoint
-                return [`/?url=${encodeURIComponent(targetUrl)}`];
-            }
-            return [
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-                `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
-                `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`
+        // ========== PROXY CHAIN FOR RSS (2026 OPTIMIZED) ==========
+        const RSS_URL = 'https://rss.alexjones.media/AJNHourlyVideo.xml';
+        async function fetchRSSWithProxy() {
+            const proxies = [
+                async (url) => { let res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`); if(!res.ok) throw new Error('raw failed'); return await res.text(); },
+                async (url) => { let res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`); if(!res.ok) throw new Error('get failed'); let json = await res.json(); return json.contents; },
+                async (url) => { let res = await fetch(`/?url=${encodeURIComponent(url)}`); if(!res.ok) throw new Error('worker proxy failed'); return await res.text(); }
             ];
-        }
-        
-        async function fetchRSSFeed() {
-            feedStatusSpan.innerHTML = '📡 Fetching RSS feed via proxy...';
-            updateProxyStatus('Connecting to proxy...');
-            const proxies = buildProxyList(RSS_FEED_URL);
-            let lastError;
-            for (let i = 0; i < proxies.length; i++) {
-                const proxy = proxies[i];
-                updateProxyStatus(`Trying proxy ${i + 1} of ${proxies.length}...`);
-                try {
-                    const response = await fetch(proxy, { signal: AbortSignal.timeout(12000) });
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    let xmlText = await response.text();
-                    // allorigins /get wraps content in JSON: { "contents": "...", "status": {...} }
-                    if (xmlText.trimStart().startsWith('{')) {
-                        try {
-                            const json = JSON.parse(xmlText);
-                            if (json.contents) xmlText = json.contents;
-                        } catch (_) { /* not JSON, use as-is */ }
-                    }
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
-                    if (xmlDoc.querySelector('parsererror')) throw new Error('Invalid XML received');
-                    updateProxyStatus(`Feed loaded via proxy ${i + 1}`);
-                    return xmlDoc;
-                } catch (err) {
-                    lastError = err;
-                    console.warn(`Proxy ${i + 1} failed:`, err.message);
-                    updateProxyStatus(`Proxy ${i + 1} failed: ${err.message}`);
-                }
+            for(let proxyFn of proxies) {
+                try { return await proxyFn(RSS_URL); } catch(e) { debugLog(`Proxy attempt failed: ${e.message}`, "warning"); continue; }
             }
-            updateProxyStatus(`All proxies failed: ${lastError?.message}`);
-            console.error('RSS Fetch Error:', lastError);
-            throw lastError || new Error('All CORS proxies failed');
+            throw new Error("All CORS proxies exhausted");
         }
         
-        function parseEpisodesFromXML(xmlDoc) {
-            const items = xmlDoc.querySelectorAll('item');
-            const episodes = [];
+        function parseRSSEpisodes(xmlText) {
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(xmlText, "application/xml");
+            if(xml.querySelector('parsererror')) throw new Error("XML parse error");
+            const items = xml.querySelectorAll('item');
+            let episodes = [];
             items.forEach(item => {
-                const title = item.querySelector('title')?.textContent?.trim() || '';
-                const enclosure = item.querySelector('enclosure');
-                const videoUrl = enclosure?.getAttribute('url') || '';
-                const pubDateStr = item.querySelector('pubDate')?.textContent;
-                if (!videoUrl || (!videoUrl.includes('.m4v') && !videoUrl.includes('.mp4'))) return;
-                
-                let pubDate = pubDateStr ? new Date(pubDateStr) : new Date(0);
-                const dateKey = formatDateKey(pubDate);
-                const { show, hour } = parseShowAndHour(title);
-                
-                episodes.push({
-                    id: videoUrl.split('/').pop() + '_' + dateKey,
-                    title,
-                    videoUrl,
-                    pubDate,
-                    dateKey,
-                    formattedDate: dateKey,
-                    show,
-                    hour
-                });
+                let title = item.querySelector('title')?.textContent?.trim() || '';
+                let enclosure = item.querySelector('enclosure');
+                let videoUrl = enclosure?.getAttribute('url') || '';
+                if(!videoUrl || !videoUrl.includes('.m4v')) return;
+                let pubDate = item.querySelector('pubDate')?.textContent ? new Date(item.querySelector('pubDate').textContent) : new Date();
+                let dateKey = `${pubDate.getFullYear()}-${String(pubDate.getMonth()+1).padStart(2,'0')}-${String(pubDate.getDate()).padStart(2,'0')}`;
+                let show = title.includes('War Room') ? 'War Room' : (title.includes('Sunday Night') ? 'Sunday Night Live' : 'Alex Jones');
+                let hourMatch = title.match(/Hr(\d)/i);
+                let hour = hourMatch ? `Hr${hourMatch[1]}` : '';
+                episodes.push({ id: videoUrl, title, videoUrl, pubDate, dateKey, show, hour });
             });
-            // sort descending (newest first)
-            episodes.sort((a,b) => b.pubDate - a.pubDate);
+            episodes.sort((a,b)=>b.pubDate - a.pubDate);
             return episodes;
         }
         
-        function groupEpisodesByDate(episodes) {
-            const groups = {};
-            episodes.forEach(ep => {
-                if (!groups[ep.dateKey]) groups[ep.dateKey] = [];
-                groups[ep.dateKey].push(ep);
-            });
-            return groups;
-        }
-        
-        // ========== RENDER PLAYLIST (simple DOM) ==========
-        function renderPlaylist() {
-            if (!playlistContainer) return;
-            if (!currentPlaylist.length) {
-                playlistContainer.innerHTML = '<div class="text-center text-slate-500 text-sm py-10">No episodes for selected date</div>';
-                segmentCountSpan.innerText = '0 items';
-                return;
-            }
-            
-            const fragment = document.createDocumentFragment();
-            for (let idx = 0; idx < currentPlaylist.length; idx++) {
-                const ep = currentPlaylist[idx];
-                const isActive = (idx === currentIndex);
-                const showType = ep.show;
-                
-                const div = document.createElement('div');
-                div.className = `segment-item p-3 rounded-xl border-l-4 ${isActive ? 'segment-active border-blue-500 bg-slate-800/60' : 'border-transparent bg-slate-800/30 hover:bg-slate-800/70'}`;
-                div.setAttribute('data-index', idx);
-                
-                const flexDiv = document.createElement('div');
-                flexDiv.className = 'flex justify-between items-center gap-2';
-                const leftDiv = document.createElement('div');
-                leftDiv.className = 'flex-1 min-w-0';
-                const topRow = document.createElement('div');
-                topRow.className = 'flex items-center gap-2 flex-wrap';
-                const showSpan = document.createElement('span');
-                showSpan.className = `text-xs font-semibold ${ep.show === 'War Room' ? 'text-purple-400' : (ep.show === 'Sunday Night Live' ? 'text-amber-400' : 'text-blue-400')}`;
-                showSpan.textContent = escapeHtml(ep.show);
-                topRow.appendChild(showSpan);
-                if (ep.hour) {
-                    const hourSpan = document.createElement('span');
-                    hourSpan.className = 'text-xs font-mono text-slate-300';
-                    hourSpan.textContent = escapeHtml(ep.hour);
-                    topRow.appendChild(hourSpan);
-                }
-                const dateSpan = document.createElement('span');
-                dateSpan.className = 'text-[10px] bg-slate-700 px-1.5 py-0.5 rounded-full';
-                dateSpan.textContent = formatDisplayDate(ep.dateKey);
-                topRow.appendChild(dateSpan);
-                leftDiv.appendChild(topRow);
-                const titleP = document.createElement('p');
-                titleP.className = 'text-sm font-medium text-white truncate mt-1';
-                titleP.textContent = escapeHtml(ep.title.substring(0, 70));
-                leftDiv.appendChild(titleP);
-                flexDiv.appendChild(leftDiv);
-                const indicatorSpan = document.createElement('span');
-                indicatorSpan.className = isActive ? 'text-green-400 text-xs' : 'text-slate-500 text-xs';
-                indicatorSpan.textContent = isActive ? '鈻? : '鈼?;
-                flexDiv.appendChild(indicatorSpan);
-                div.appendChild(flexDiv);
-                div.addEventListener('click', () => {
-                    currentIndex = idx;
-                    loadVideoByIndex(currentIndex);
-                    renderPlaylist();
-                });
-                fragment.appendChild(div);
-            }
-            playlistContainer.innerHTML = '';
-            playlistContainer.appendChild(fragment);
-            segmentCountSpan.innerText = `${currentPlaylist.length} videos`;
-            
-            // scroll active into view
-            const activeEl = playlistContainer.querySelector('.segment-active');
-            if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-        
-        function loadVideoByIndex(index) {
-            if (!currentPlaylist[index]) return;
-            const ep = currentPlaylist[index];
-            videoPlayer.pause();
-            videoPlayer.src = ep.videoUrl;
-            videoPlayer.load();
-            console.log('Loading video:', ep.videoUrl);
-            videoPlayer.play().catch(e => {
-                console.error('Playback error:', e);
-                currentTitleSpan.textContent = `Error loading: ${escapeHtml(ep.title)}`;
-            });
-            currentTitleSpan.textContent = escapeHtml(ep.title);
-            positionBadge.innerText = `${index + 1} / ${currentPlaylist.length}`;
-            progressFill.style.width = '0%';
-            if (loadingStarted) {
-                if (audioElement && !audioElement.paused) stopMusicAndPlayVideo();
-                loadingStarted = false;
-            }
-        }
-        
-        function applyDateFilter(dateKey) {
-            if (!dateKey || !episodesByDate[dateKey]) {
-                currentPlaylist = [];
-            } else {
-                currentPlaylist = episodesByDate[dateKey];
-            }
-            currentIndex = 0;
-            renderPlaylist();
-            if (currentPlaylist.length) loadVideoByIndex(0);
-        }
-        
-        // ========== MAIN INITIALIZATION ==========
-        async function loadAndInitialize(manualRetry = false) {
-            if (fetchInProgress) return;
-            fetchInProgress = true;
-            if (manualRetry) {
-                feedStatusSpan.innerHTML = '馃攧 Manual retry...';
-                overlayStatusMsg.textContent = 'Retrying RSS fetch via Worker...';
-                manualRetryBtn.classList.add('hidden');
-            }
+        async function loadArchiveFeed(showOverlay=true) {
+            if(archiveFetchInProgress) return;
+            archiveFetchInProgress = true;
+            document.getElementById('archiveProxyStatus').innerText = '🌐 Fetching RSS via allorigins.win/raw...';
+            if(showOverlay) showSiriusOverlay(true, "Fetching AJN Full Archive (RSS)");
             try {
-                const xmlDoc = await fetchRSSFeed();
-                const episodes = parseEpisodesFromXML(xmlDoc);
-                if (!episodes.length) throw new Error('No episodes found in RSS feed');
-                allEpisodes = episodes;
-                episodesByDate = groupEpisodesByDate(episodes);
+                const xmlText = await fetchRSSWithProxy();
+                const episodes = parseRSSEpisodes(xmlText);
+                if(!episodes.length) throw new Error("No episodes found");
+                allArchiveEpisodes = episodes;
+                episodesByDate = {};
+                episodes.forEach(ep => { if(!episodesByDate[ep.dateKey]) episodesByDate[ep.dateKey] = []; episodesByDate[ep.dateKey].push(ep); });
                 availableDates = Object.keys(episodesByDate).sort().reverse();
-                backgroundFetchComplete = true;
-                feedStatusSpan.innerHTML = `鉁?${availableDates.length} dates (RSS XML)`;
-                updateProxyStatus('Feed loaded via Worker proxy');
-                
-                // initialize flatpickr with available dates
-                if (flatpickrInstance) flatpickrInstance.destroy();
-                flatpickrInstance = flatpickr(datePickerInput, {
+                document.getElementById('archiveProxyStatus').innerHTML = `✅ Loaded ${availableDates.length} dates, ${episodes.length} segments`;
+                // init flatpickr with enabled dates
+                if(flatpickrInstance) flatpickrInstance.destroy();
+                flatpickrInstance = flatpickr("#archiveDatePicker", {
                     dateFormat: "Y-m-d",
-                    onChange: (dates) => {
-                        if (dates.length) {
-                            const ymd = formatDateKey(dates[0]);
-                            if (episodesByDate[ymd]) {
-                                currentFilterDate = ymd;
-                                applyDateFilter(ymd);
-                            }
-                        }
-                    }
+                    onChange: (dates) => { if(dates.length) { let ymd = `${dates[0].getFullYear()}-${String(dates[0].getMonth()+1).padStart(2,'0')}-${String(dates[0].getDate()).padStart(2,'0')}`; if(episodesByDate[ymd]) renderArchivePlaylist(episodesByDate[ymd]); } }
                 });
-                const dateObjects = availableDates.map(d => new Date(d));
-                flatpickrInstance.set('enable', dateObjects);
-                
-                // load most recent date
-                const newest = availableDates[0];
-                if (newest) {
-                    datePickerInput.value = newest;
-                    currentFilterDate = newest;
-                    applyDateFilter(newest);
-                }
-                
-                if (musicOverlay && musicOverlay.style.display === 'flex') {
-                    const stopBtn = document.getElementById('stopMusicAndPlayBtn');
-                    if (stopBtn && !stopBtn.classList.contains('system-ready-btn')) {
-                        stopBtn.textContent = '鈿?System Ready 鈥?Play Video';
-                        stopBtn.classList.add('system-ready-btn');
-                        overlayStatusMsg.textContent = 'Full archive loaded. Click to start video.';
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-                feedStatusSpan.innerHTML = '鈿狅笍 RSS fetch failed';
-                updateProxyStatus(`Error: ${err.message}`);
-                if (manualRetryBtn) manualRetryBtn.classList.remove('hidden');
-                overlayStatusMsg.textContent = 'Archive fetch failed. Click "Retry Archive Fetch" to try again.';
-            } finally {
-                fetchInProgress = false;
-            }
+                const dateObjs = availableDates.map(d=>new Date(d));
+                flatpickrInstance.set('enable', dateObjs);
+                if(availableDates.length) { flatpickrInstance.setDate(availableDates[0]); renderArchivePlaylist(episodesByDate[availableDates[0]]); }
+                if(showOverlay) { document.getElementById('overlayStatusMsg').innerText = "Archive ready. Press 'Stop Music & Play Video' to start."; }
+                debugLog(`Archive loaded: ${episodes.length} episodes`, "info");
+            } catch(err) {
+                debugLog(`Archive fetch error: ${err.message}`, "error");
+                document.getElementById('archiveProxyStatus').innerHTML = `⚠️ Failed: ${err.message}`;
+                if(showOverlay) document.getElementById('overlayStatusMsg').innerText = "Failed to load RSS. Click Retry.";
+                document.getElementById('manualRetryArchiveBtn').classList.remove('hidden');
+            } finally { archiveFetchInProgress = false; }
         }
         
-        function updateProxyStatus(msg) {
-            if (proxyStatusSpan) proxyStatusSpan.textContent = msg ? msg.substring(0, 100) : '';
-        }
-        
-        // event listeners for buttons
-        document.getElementById('prev-segment-btn')?.addEventListener('click', () => {
-            if (currentIndex > 0) {
-                currentIndex--;
-                loadVideoByIndex(currentIndex);
-                renderPlaylist();
-            }
-        });
-        document.getElementById('next-segment-btn')?.addEventListener('click', () => {
-            if (currentIndex + 1 < currentPlaylist.length) {
-                currentIndex++;
-                loadVideoByIndex(currentIndex);
-                renderPlaylist();
-            }
-        });
-        document.getElementById('refresh-cache-btn')?.addEventListener('click', () => window.location.reload());
-        manualRetryBtn?.addEventListener('click', () => loadAndInitialize(true));
-        
-        videoPlayer.addEventListener('timeupdate', () => {
-            if (videoPlayer.duration) progressFill.style.width = `${(videoPlayer.currentTime / videoPlayer.duration) * 100}%`;
-        });
-        videoPlayer.addEventListener('ended', () => {
-            if (currentIndex + 1 < currentPlaylist.length) {
-                currentIndex++;
-                loadVideoByIndex(currentIndex);
-                renderPlaylist();
-            }
-        });
-        
-        // start everything
-        initSiriusAudio();
-        startSiriusAndOverlay();
-        loadingStarted = true;
-        loadAndInitialize(false);
-        
-        // ========== SERVICE WORKER REGISTRATION ==========
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js').then((reg) => {
-                console.log('Service Worker registered:', reg);
-            }).catch((err) => {
-                console.log('Service Worker registration failed:', err);
+        function renderArchivePlaylist(playlist) {
+            currentArchivePlaylist = playlist;
+            const container = document.getElementById('archivePlaylistContainer');
+            if(!playlist.length) { container.innerHTML = '<div class="text-slate-400 text-center">No episodes for this date</div>'; document.getElementById('archiveSegmentCount').innerText = '0'; return; }
+            document.getElementById('archiveSegmentCount').innerText = playlist.length;
+            container.innerHTML = playlist.map((ep, idx) => `
+                <div class="archive-segment ${idx === currentArchiveIndex ? 'archive-segment-active' : ''}" data-idx="${idx}">
+                    <div class="flex justify-between"><span class="font-bold text-sm">${ep.show}</span><span class="text-xs">${ep.hour || ''}</span></div>
+                    <div class="text-xs truncate">${ep.title.substring(0,60)}</div>
+                </div>
+            `).join('');
+            container.querySelectorAll('.archive-segment').forEach(el => {
+                el.addEventListener('click', () => { 
+                    let idx = parseInt(el.dataset.idx);
+                    currentArchiveIndex = idx;
+                    renderArchivePlaylist(currentArchivePlaylist);
+                    playArchiveVideo(currentArchivePlaylist[idx]);
+                });
             });
         }
+        
+        function playArchiveVideo(ep) {
+            if(!ep) return;
+            stopSiriusMusic();
+            const video = document.getElementById('player');
+            if(hlsPlayer) hlsPlayer.destroy();
+            if(dashPlayer) dashPlayer.reset();
+            video.src = ep.videoUrl;
+            video.load();
+            video.play().catch(e=>debugLog(`Video autoplay: ${e.message}`,"warning"));
+            currentChannelUrl = ep.videoUrl;
+            document.getElementById('goldCurrentChannel').innerText = ep.title.substring(0,40);
+            document.getElementById('overlayStatusMsg').innerText = `Now playing: ${ep.title}`;
+            // hide overlay if visible
+            document.getElementById('siriusOverlay').classList.add('hidden-overlay');
+            stopSiriusMusic();
+            // add to history
+            history.unshift({ type: 'archive', name: `AJN: ${ep.title}`, url: ep.videoUrl });
+            localStorage.setItem('history', JSON.stringify(history.slice(0,50)));
+            displayHistory();
+        }
+        
+        // ========== IPTV CORE (M3U, Favorites, History) ==========
+        function parseM3U(content) {
+            let lines = content.split('\n');
+            let channels = [];
+            let curr = null;
+            for(let line of lines){
+                line = line.trim();
+                if(line.startsWith('#EXTINF')){
+                    let nameMatch = line.match(/,([^,]+)$/);
+                    let logoMatch = line.match(/tvg-logo="([^"]+)"/i);
+                    curr = { name: nameMatch ? nameMatch[1] : 'Channel', logo: logoMatch ? logoMatch[1] : null, url: null };
+                } else if(line && !line.startsWith('#') && curr){
+                    if(line.startsWith('http')){ curr.url = line; channels.push(curr); curr = null; }
+                }
+            }
+            allChannels = channels;
+            localStorage.setItem('lastPlaylist', JSON.stringify(channels));
+            displayChannels(channels);
+            if(channels.length) playStream(channels[0].url);
+            showPlayerNotification(`Loaded ${channels.length} channels`, 2000);
+        }
+        
+        function displayChannels(channels) {
+            const container = document.getElementById('channelList');
+            if(!channels.length) { container.innerHTML = '<div class="text-center p-4">No channels</div>'; return; }
+            container.innerHTML = channels.map((ch,i)=>`<button class="channel-btn w-full text-left p-2 rounded mb-1 flex items-center gap-2" data-url="${escapeHtml(ch.url)}"><img src="${ch.logo || 'https://placehold.co/30x30'}" class="w-6 h-6 rounded" onerror="this.src='https://placehold.co/30x30'"> <span class="truncate">${escapeHtml(ch.name)}</span> ${favorites.some(f=>f.url===ch.url)?'⭐':''}</button>`).join('');
+            container.querySelectorAll('.channel-btn').forEach(btn=>btn.addEventListener('click',()=>playStream(btn.dataset.url)));
+        }
+        
+        function playStream(url, retry=false) {
+            if(!url) return;
+            const video = document.getElementById('player');
+            if(hlsPlayer) hlsPlayer.destroy();
+            if(dashPlayer) dashPlayer.reset();
+            currentChannelUrl = url;
+            const streamType = playerState.streamType === 'auto' ? (url.includes('.m3u8')?'hls':(url.includes('.mpd')?'dash':'native')) : playerState.streamType;
+            if(streamType === 'hls' && Hls.isSupported()){ hlsPlayer = new Hls(); hlsPlayer.loadSource(url); hlsPlayer.attachMedia(video); hlsPlayer.on(Hls.Events.MANIFEST_PARSED,()=>video.play()); }
+            else if(streamType === 'dash' && dashjs){ dashPlayer = dashjs.MediaPlayer().create(); dashPlayer.initialize(video, url, false); video.play(); }
+            else { video.src = url; video.load(); video.play(); }
+            document.getElementById('goldCurrentChannel').innerText = url.split('/').pop() || 'Stream';
+            history.unshift({ type: 'stream', name: url.substring(0,40), url: url });
+            localStorage.setItem('history', JSON.stringify(history.slice(0,50)));
+            displayHistory();
+        }
+        
+        function displayFavorites(){ let fList = document.getElementById('favoritesList'); if(!favorites.length){ fList.innerHTML='<p>No favorites</p>'; return; } fList.innerHTML = favorites.map(f=>`<button class="fav-btn w-full text-left p-2 rounded" data-url="${escapeHtml(f.url)}">⭐ ${escapeHtml(f.name)}</button>`).join(''); document.querySelectorAll('.fav-btn').forEach(btn=>btn.addEventListener('click',()=>playStream(btn.dataset.url))); }
+        function displayHistory(){ let hDiv = document.getElementById('historyList'); if(!history.length){ hDiv.innerHTML='<p>No history</p>'; return; } hDiv.innerHTML = history.slice(0,20).map((h,i)=>`<button class="hist-btn w-full text-left p-1 text-sm" data-url="${escapeHtml(h.url||'')}">📺 ${escapeHtml(h.name||h.url||'unknown')}</button>`).join(''); document.querySelectorAll('.hist-btn').forEach(btn=>btn.addEventListener('click',()=>playStream(btn.dataset.url))); }
+        function showPlayerNotification(msg, duration=2000){ let notif = document.getElementById('playerNotification')|| (()=>{let d=document.createElement('div'); d.id='playerNotification'; d.className='fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white p-2 rounded-full z-50 text-sm'; document.body.appendChild(d); return d;})(); notif.innerText=msg; notif.style.display='block'; setTimeout(()=>notif.style.display='none',duration);}
+        function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>]/g, function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
+        
+        // ========== UI EVENT BINDINGS ==========
+        document.getElementById('toggleSidebarBtn').onclick = ()=>document.querySelector('.sidebar').classList.toggle('hidden');
+        document.getElementById('toggleSettingsBtn').onclick = ()=>document.getElementById('secondarySidebar').classList.toggle('active');
+        document.getElementById('toggleThemeBtn').onclick = ()=>{ document.body.classList.toggle('light'); localStorage.setItem('theme',document.body.classList.contains('light')?'light':'dark'); };
+        if(localStorage.getItem('theme')==='light') document.body.classList.add('light');
+        document.getElementById('loadUrl').onclick = ()=>{ let u = document.getElementById('urlInput').value; if(u.endsWith('.m3u')||u.endsWith('.m3u8')) fetch(u).then(r=>r.text()).then(parseM3U).catch(e=>showPlayerNotification("Failed M3U")); else playStream(u); };
+        document.getElementById('fileInput').onchange = (e)=>{ let f=e.target.files[0]; if(f){ let reader=new FileReader(); reader.onload=ev=>{ if(f.name.includes('.m3u')) parseM3U(ev.target.result); else playStream(ev.target.result); }; reader.readAsText(f); } };
+        document.getElementById('exportFavoritesBtn').onclick = ()=>{ let m3u="#EXTM3U\n"; favorites.forEach(f=>{ m3u+=`#EXTINF:-1,${f.name}\n${f.url}\n`; }); let blob=new Blob([m3u],{type:'audio/x-mpegurl'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='favorites.m3u'; a.click(); };
+        document.getElementById('deleteAllHistoryBtn').onclick = ()=>{ history=[]; localStorage.setItem('history','[]'); displayHistory(); };
+        document.getElementById('refreshArchiveBtn').onclick = ()=>loadArchiveFeed(true);
+        document.getElementById('stopMusicAndPlayArchiveBtn').onclick = ()=>{ stopSiriusMusic(); document.getElementById('siriusOverlay').classList.add('hidden-overlay'); if(currentArchivePlaylist.length) playArchiveVideo(currentArchivePlaylist[currentArchiveIndex]); };
+        document.getElementById('manualRetryArchiveBtn').onclick = ()=>{ document.getElementById('manualRetryArchiveBtn').classList.add('hidden'); loadArchiveFeed(true); };
+        document.getElementById('stopMusicBtn').onclick = ()=>{ stopSiriusMusic(); document.getElementById('siriusOverlay').classList.add('hidden-overlay'); };
+        document.getElementById('resetPlayerBtn').onclick = ()=>{ if(hlsPlayer)hlsPlayer.destroy(); if(dashPlayer)dashPlayer.reset(); document.getElementById('player').src=''; };
+        document.getElementById('clearCacheBtn').onclick = ()=>{ localStorage.clear(); allChannels=[]; favorites=[]; history=[]; displayChannels([]); displayFavorites(); displayHistory(); showPlayerNotification("Cache cleared"); };
+        document.getElementById('playPauseBtn').onclick = ()=>{ let v=document.getElementById('player'); v.paused?v.play():v.pause(); };
+        document.getElementById('prevChannelBtn').onclick = ()=>{ if(allChannels.length){ let idx = allChannels.findIndex(c=>c.url===currentChannelUrl); let prev = idx>0?idx-1:allChannels.length-1; playStream(allChannels[prev].url); } };
+        document.getElementById('nextChannelBtn').onclick = ()=>{ if(allChannels.length){ let idx = allChannels.findIndex(c=>c.url===currentChannelUrl); let next = (idx+1)%allChannels.length; playStream(allChannels[next].url); } };
+        document.getElementById('streamType').onchange = (e)=>playerState.streamType=e.target.value;
+        document.getElementById('fallbackMode').onchange = (e)=>playerState.fallbackMode=e.target.value;
+        document.getElementById('debugMode').onchange = (e)=>{ playerState.debugMode=e.target.value; document.getElementById('debugConsole').classList.toggle('active', e.target.value==='on'); };
+        
+        // Local time & gold bar updates
+        function updateLocalTime(){ let d=new Date(); document.getElementById('localTime').innerText=d.toLocaleTimeString(); document.getElementById('goldCurrentTime').innerText=d.toLocaleTimeString(); }
+        setInterval(updateLocalTime,1000);
+        
+        // Init default playlist
+        const defaultM3U = `#EXTM3U\n#EXTINF:-1,🎬 Demo Stream\nhttps://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8\n#EXTINF:-1,📺 Sample MP4\nhttps://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4`;
+        parseM3U(defaultM3U);
+        displayFavorites();
+        displayHistory();
+        // Load AJN Archive silently in background after 1s
+        setTimeout(()=>{ loadArchiveFeed(false); }, 800);
+        initSiriusAudio();
+        debugLog("Unified Player: IPTV + AJN Archive ready", "info");
     </script>
 </body>
 </html>
