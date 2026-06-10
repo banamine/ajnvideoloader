@@ -1,10 +1,3 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App.tsx";
-
-createRoot(document.getElementById("root")!).render(
-	<StrictMode>
-		<App />
-	</StrictMode>,
-);
+// AJN Archive Player - Vanilla JavaScript Application
+// This file is intentionally minimal to allow the vanilla JavaScript in index.html to run
+// The React app is not needed for this project

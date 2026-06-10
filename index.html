@@ -412,7 +412,7 @@
         pillStopBtn?.addEventListener('click', stopMusicAndPlayVideo);
         
         // ========== FETCH RSS XML VIA WORKER PROXY ==========
-        const WORKER_PROXY = 'https://muddy-unit-f498.banamine.workers.dev/?url=';
+        const WORKER_PROXY = '/?url=';
         const RSS_FEED_URL = 'https://rss.alexjones.media/AJNHourlyVideo.xml';
         
         async function fetchRSSFeed() {
@@ -667,6 +667,15 @@
         startSiriusAndOverlay();
         loadingStarted = true;
         loadAndInitialize(false);
+        
+        // ========== SERVICE WORKER REGISTRATION ==========
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js').then((reg) => {
+                console.log('Service Worker registered:', reg);
+            }).catch((err) => {
+                console.log('Service Worker registration failed:', err);
+            });
+        }
     </script>
 </body>
 </html>

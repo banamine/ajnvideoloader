@@ -2,18 +2,122 @@
 export { MyWorkflow } from "./workflow";
 export { WorkflowStatusDO } from "./durable-object";
 
+const SERVICE_WORKER_CODE = `
+const CACHE_NAME = 'ajn-archive-v1';
+const STATIC_ASSETS = [
+  '/',
+  '/index.html'
+];
+
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then((c) => {
+      return c.addAll(STATIC_ASSETS).catch(() => {});
+    })
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((names) => {
+      return Promise.all(names.map((n) => n !== CACHE_NAME && caches.delete(n)));
+    })
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (e) => {
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'GET') return;
+  
+  if (url.pathname === '/' && url.searchParams.has('url')) {
+    e.respondWith(
+      fetch(e.request)
+        .then((r) => {
+          if (r.status === 200) {
+            caches.open(CACHE_NAME).then((c) => c.put(e.request, r.clone()));
+          }
+          return r;
+        })
+        .catch(() => {
+          return caches.match(e.request).then((c) => c || new Response('Offline', { status: 503 }));
+        })
+    );
+  } else {
+    e.respondWith(
+      caches.match(e.request).then((c) => {
+        return c || fetch(e.request).catch(() => {
+          return new Response('Offline', { status: 503 });
+        });
+      })
+    );
+  }
+});
+`;
+
 /**
  * Main Worker fetch handler
  *
- * Handles API routes and WebSocket upgrade requests for workflow management:
- * - POST /api/workflow/start - Create new workflow instance
- * - GET /api/workflow/status/:id - Get workflow status
- * - POST /api/workflow/event/:id - Send events to workflow
- * - GET /ws - WebSocket connection for real-time updates
+ * Handles CORS proxy for RSS feeds and other requests
  */
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
+
+		// Service Worker: Serve the service worker script
+		if (url.pathname === '/service-worker.js') {
+			return new Response(SERVICE_WORKER_CODE, {
+				headers: {
+					'Content-Type': 'application/javascript',
+					'Cache-Control': 'public, max-age=3600',
+					'Service-Worker-Allowed': '/'
+				}
+			});
+		}
+
+		// CORS Proxy: Handle RSS feed requests via ?url= parameter
+		if (url.searchParams.has('url')) {
+			const targetUrl = url.searchParams.get('url');
+			if (!targetUrl) {
+				return new Response('Missing url parameter', { status: 400 });
+			}
+
+			try {
+				const response = await fetch(targetUrl, {
+					method: request.method,
+					headers: {
+						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+					}
+				});
+
+				const contentType = response.headers.get('content-type');
+				const body = await response.text();
+
+				return new Response(body, {
+					status: response.status,
+					headers: {
+						'Content-Type': contentType || 'application/xml',
+						'Access-Control-Allow-Origin': '*',
+						'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+						'Access-Control-Allow-Headers': 'Content-Type',
+						'Cache-Control': 'public, max-age=3600'
+					}
+				});
+			} catch (err) {
+				console.error('Proxy error:', err);
+				return new Response(
+					JSON.stringify({ error: String(err) }),
+					{ 
+						status: 500,
+						headers: {
+							'Content-Type': 'application/json',
+							'Access-Control-Allow-Origin': '*'
+						}
+					}
+				);
+			}
+		}
 
 		// API: Start a new workflow instance
 		if (url.pathname === "/api/workflow/start" && request.method === "POST") {
