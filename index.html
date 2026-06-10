@@ -420,61 +420,56 @@
         // ========== FETCH RSS XML VIA CORS PROXY ==========
         // For GitHub Pages deployment, use reliable public CORS proxy
         // For Cloudflare Workers deployment, use local proxy
-        const WORKER_PROXY = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
-            ? '/?url=' 
-            : 'https://cors.sh/';  // More reliable CORS proxy
         const RSS_FEED_URL = 'https://rss.alexjones.media/AJNHourlyVideo.xml';
         
-        async function fetchRSSFeed() {
-            feedStatusSpan.innerHTML = '馃摗 Fetching RSS feed via proxy...';
-            updateProxyStatus('Connecting to proxy...');
-            try {
-                let response;
-                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                
-                if (isLocalhost) {
-                    // Use local worker proxy
-                    response = await fetch(WORKER_PROXY + encodeURIComponent(RSS_FEED_URL), { signal: AbortSignal.timeout(15000) });
-                } else {
-                    // Use CORS proxy for GitHub Pages - try multiple proxies as fallback
-                    const proxies = [
-                        `https://cors.sh/${RSS_FEED_URL}`,
-                        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(RSS_FEED_URL)}`,
-                        `https://yacdn.org/serve/https://${RSS_FEED_URL.split('://')[1]}`
-                    ];
-                    
-                    let lastError;
-                    for (const proxy of proxies) {
-                        try {
-                            response = await fetch(proxy, { 
-                                signal: AbortSignal.timeout(10000),
-                                headers: { 'User-Agent': 'Mozilla/5.0' }
-                            });
-                            if (response.ok) break;
-                        } catch (err) {
-                            lastError = err;
-                            updateProxyStatus(`Proxy failed, trying next...`);
-                            continue;
-                        }
-                    }
-                    
-                    if (!response || !response.ok) {
-                        throw lastError || new Error('All CORS proxies failed');
-                    }
-                }
-                
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
-                const parseError = xmlDoc.querySelector('parsererror');
-                if (parseError) throw new Error('Invalid XML');
-                return xmlDoc;
-            } catch (err) {
-                updateProxyStatus(`Feed fetch failed: ${err.message}`);
-                console.error('RSS Fetch Error:', err);
-                throw err;
+        // Build proxy URL list — local Worker first, then reliable public fallbacks
+        function buildProxyList(targetUrl) {
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const isCloudflareWorker = window.location.hostname.endsWith('.workers.dev') || window.location.hostname.endsWith('.pages.dev');
+            if (isLocalhost || isCloudflareWorker) {
+                // Use the deployed Worker's own CORS proxy endpoint
+                return [`/?url=${encodeURIComponent(targetUrl)}`];
             }
+            return [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+                `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
+                `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`
+            ];
+        }
+        
+        async function fetchRSSFeed() {
+            feedStatusSpan.innerHTML = '📡 Fetching RSS feed via proxy...';
+            updateProxyStatus('Connecting to proxy...');
+            const proxies = buildProxyList(RSS_FEED_URL);
+            let lastError;
+            for (let i = 0; i < proxies.length; i++) {
+                const proxy = proxies[i];
+                updateProxyStatus(`Trying proxy ${i + 1} of ${proxies.length}...`);
+                try {
+                    const response = await fetch(proxy, { signal: AbortSignal.timeout(12000) });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    let xmlText = await response.text();
+                    // allorigins /get wraps content in JSON: { "contents": "...", "status": {...} }
+                    if (xmlText.trimStart().startsWith('{')) {
+                        try {
+                            const json = JSON.parse(xmlText);
+                            if (json.contents) xmlText = json.contents;
+                        } catch (_) { /* not JSON, use as-is */ }
+                    }
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+                    if (xmlDoc.querySelector('parsererror')) throw new Error('Invalid XML received');
+                    updateProxyStatus(`Feed loaded via proxy ${i + 1}`);
+                    return xmlDoc;
+                } catch (err) {
+                    lastError = err;
+                    console.warn(`Proxy ${i + 1} failed:`, err.message);
+                    updateProxyStatus(`Proxy ${i + 1} failed: ${err.message}`);
+                }
+            }
+            updateProxyStatus(`All proxies failed: ${lastError?.message}`);
+            console.error('RSS Fetch Error:', lastError);
+            throw lastError || new Error('All CORS proxies failed');
         }
         
         function parseEpisodesFromXML(xmlDoc) {
@@ -485,7 +480,7 @@
                 const enclosure = item.querySelector('enclosure');
                 const videoUrl = enclosure?.getAttribute('url') || '';
                 const pubDateStr = item.querySelector('pubDate')?.textContent;
-                if (!videoUrl || !videoUrl.includes('.m4v')) return;
+                if (!videoUrl || (!videoUrl.includes('.m4v') && !videoUrl.includes('.mp4'))) return;
                 
                 let pubDate = pubDateStr ? new Date(pubDateStr) : new Date(0);
                 const dateKey = formatDateKey(pubDate);
@@ -586,7 +581,6 @@
             if (!currentPlaylist[index]) return;
             const ep = currentPlaylist[index];
             videoPlayer.pause();
-            videoPlayer.crossOrigin = 'anonymous';  // Enable CORS for video
             videoPlayer.src = ep.videoUrl;
             videoPlayer.load();
             console.log('Loading video:', ep.videoUrl);
