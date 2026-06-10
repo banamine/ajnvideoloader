@@ -329,7 +329,7 @@
             return { show, hour };
         }
         
-        // ========== SIRIUS AUDIO (unchanged, working) ==========
+        // ========== SIRIUS AUDIO (with CORS fix) ==========
         const SIRIUS_PRIMARY = 'https://raw.githubusercontent.com/banamine/AJN-Resource-Hub/main/The%20Alan%20Parsons%20Project%20-%20Sirius%20(Official%20Audio).mp3';
         const SIRIUS_FALLBACK = 'https://archive.org/download/a-132-5_20260424/1.%20The%20Alan%20Parsons%20Project%20-%20Sirius%20%28Official%20Audio%29.mp4';
         const SEEK_TO_SECONDS = 25;
@@ -337,22 +337,28 @@
         function initSiriusAudio() {
             if (audioElement) return;
             audioElement = new Audio();
+            audioElement.crossOrigin = 'anonymous';  // Enable CORS for audio
             audioElement.loop = true;
             audioElement.volume = 0.28;
             const loadAudio = (url) => {
                 audioElement.src = url;
                 audioElement.load();
+                console.log('Loading audio:', url);
                 audioElement.addEventListener('canplay', () => {
                     if (audioElement.duration > SEEK_TO_SECONDS) audioElement.currentTime = SEEK_TO_SECONDS;
+                    console.log('Audio ready');
                 }, { once: true });
             };
             loadAudio(SIRIUS_PRIMARY);
-            audioElement.addEventListener('error', () => {
+            audioElement.addEventListener('error', (err) => {
+                console.error('Audio error:', err, audioElement.error);
                 if (currentAudioSource === 0) {
                     currentAudioSource = 1;
+                    console.log('Trying fallback audio...');
                     loadAudio(SIRIUS_FALLBACK);
                 } else {
-                    if (overlayStatusMsg) overlayStatusMsg.textContent = 'Loading archive (audio unavailable)';
+                    if (overlayStatusMsg) overlayStatusMsg.textContent = '🎵 Sirius audio unavailable (using fallback)';
+                    console.error('Both audio sources failed');
                 }
             });
         }
@@ -412,18 +418,51 @@
         pillStopBtn?.addEventListener('click', stopMusicAndPlayVideo);
         
         // ========== FETCH RSS XML VIA CORS PROXY ==========
-        // For GitHub Pages deployment, use public CORS proxy
+        // For GitHub Pages deployment, use reliable public CORS proxy
         // For Cloudflare Workers deployment, use local proxy
         const WORKER_PROXY = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
             ? '/?url=' 
-            : 'https://api.allorigins.win/raw?url=';
+            : 'https://cors.sh/';  // More reliable CORS proxy
         const RSS_FEED_URL = 'https://rss.alexjones.media/AJNHourlyVideo.xml';
         
         async function fetchRSSFeed() {
             feedStatusSpan.innerHTML = '馃摗 Fetching RSS feed via proxy...';
             updateProxyStatus('Connecting to proxy...');
             try {
-                const response = await fetch(WORKER_PROXY + encodeURIComponent(RSS_FEED_URL));
+                let response;
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                
+                if (isLocalhost) {
+                    // Use local worker proxy
+                    response = await fetch(WORKER_PROXY + encodeURIComponent(RSS_FEED_URL), { signal: AbortSignal.timeout(15000) });
+                } else {
+                    // Use CORS proxy for GitHub Pages - try multiple proxies as fallback
+                    const proxies = [
+                        `https://cors.sh/${RSS_FEED_URL}`,
+                        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(RSS_FEED_URL)}`,
+                        `https://yacdn.org/serve/https://${RSS_FEED_URL.split('://')[1]}`
+                    ];
+                    
+                    let lastError;
+                    for (const proxy of proxies) {
+                        try {
+                            response = await fetch(proxy, { 
+                                signal: AbortSignal.timeout(10000),
+                                headers: { 'User-Agent': 'Mozilla/5.0' }
+                            });
+                            if (response.ok) break;
+                        } catch (err) {
+                            lastError = err;
+                            updateProxyStatus(`Proxy failed, trying next...`);
+                            continue;
+                        }
+                    }
+                    
+                    if (!response || !response.ok) {
+                        throw lastError || new Error('All CORS proxies failed');
+                    }
+                }
+                
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const xmlText = await response.text();
                 const parser = new DOMParser();
@@ -432,7 +471,8 @@
                 if (parseError) throw new Error('Invalid XML');
                 return xmlDoc;
             } catch (err) {
-                updateProxyStatus(`Worker fetch failed: ${err.message}`);
+                updateProxyStatus(`Feed fetch failed: ${err.message}`);
+                console.error('RSS Fetch Error:', err);
                 throw err;
             }
         }
@@ -546,9 +586,14 @@
             if (!currentPlaylist[index]) return;
             const ep = currentPlaylist[index];
             videoPlayer.pause();
+            videoPlayer.crossOrigin = 'anonymous';  // Enable CORS for video
             videoPlayer.src = ep.videoUrl;
             videoPlayer.load();
-            videoPlayer.play().catch(e => console.log('Playback error:', e));
+            console.log('Loading video:', ep.videoUrl);
+            videoPlayer.play().catch(e => {
+                console.error('Playback error:', e);
+                currentTitleSpan.textContent = `Error loading: ${escapeHtml(ep.title)}`;
+            });
             currentTitleSpan.textContent = escapeHtml(ep.title);
             positionBadge.innerText = `${index + 1} / ${currentPlaylist.length}`;
             progressFill.style.width = '0%';
