@@ -1,456 +1,517 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>AJN Archive · IPTV Professional Player</title>
-    <meta name="description" content="Unified IPTV + AJN Video Archive | RSS, M3U, HLS, DASH, Proxy Chain & Sirius Overlay">
-    
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        /* ===== BASE IPTV STYLES (enhanced) ===== */
-        :root {
-            --primary-color: #2563eb;
-            --secondary-color: #1e40af;
-            --accent-color: #dc2626;
-            --dark-color: #0f172a;
-            --light-color: #f8fafc;
-            --sidebar-width: 320px;
-            --gold-color: #ffd700;
-            --gold-light: #ffec8b;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: var(--dark-color); color: var(--light-color); min-height: 100vh; display: flex; overflow: hidden; }
-        body.light { background: #e2e8f0; color: #1e293b; }
-        
-        /* Sidebars */
-        .sidebar { width: var(--sidebar-width); background: rgba(15, 23, 42, 0.95); border-right: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: transform 0.3s ease; backdrop-filter: blur(10px); z-index: 100; overflow-y: auto; height: 100vh; }
-        body.light .sidebar { background: rgba(255,255,255,0.95); border-right: 1px solid rgba(0,0,0,0.1); }
-        .sidebar.hidden { transform: translateX(-100%); width: 0; }
-        
-        .secondary-sidebar { width: var(--sidebar-width); background: rgba(15,23,42,0.95); border-left: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: transform 0.3s ease; backdrop-filter: blur(10px); z-index: 100; overflow-y: auto; height: 100vh; position: fixed; right: 0; top: 0; transform: translateX(100%); }
-        .secondary-sidebar.active { transform: translateX(0); }
-        body.light .secondary-sidebar { background: rgba(255,255,255,0.95); border-left: 1px solid rgba(0,0,0,0.1); }
-        
-        .sidebar-header, .secondary-sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
-        .sidebar-title { font-size: 1.4rem; font-weight: bold; color: var(--primary-color); }
-        
-        .tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.2s; }
-        .tab.active { border-bottom-color: var(--primary-color); color: var(--primary-color); }
-        .tab-content { flex: 1; overflow-y: auto; padding: 15px; display: none; }
-        .tab-content.active { display: block; }
-        
-        /* Archive specific styles (AJN) */
-        .archive-date-picker { margin-bottom: 20px; }
-        .archive-playlist { max-height: 380px; overflow-y: auto; scrollbar-width: thin; }
-        .archive-segment { transition: all 0.2s ease; cursor: pointer; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 8px; padding: 12px; border-left: 3px solid transparent; }
-        .archive-segment:hover { background: #1e293b; transform: translateX(4px); }
-        .archive-segment-active { background: #0f2b3d; border-left-color: #3b82f6; }
-        body.light .archive-segment { background: rgba(0,0,0,0.05); }
-        body.light .archive-segment:hover { background: #e2e8f0; }
-        
-        /* Sirius Music Overlay */
-        .music-overlay-global { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,15,28,0.96); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000; transition: opacity 0.5s ease; flex-direction: column; pointer-events: auto; }
-        .music-overlay-content { text-align: center; padding: 2rem; background: rgba(30,41,59,0.9); border-radius: 2rem; border: 1px solid #3b82f6; max-width: 90%; box-shadow: 0 25px 40px -12px black; }
-        .vinyl-spinner { width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #1e293b, #0f172a); box-shadow: 0 0 0 4px #334155, 0 0 0 8px #1e293b; margin: 0 auto 20px; animation: spin 2s linear infinite; }
-        .vinyl-spinner::after { content: ""; position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; background: #3b82f6; border-radius: 50%; transform: translate(-50%, -50%); }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .pulse-wave { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
-        .pulse-wave span { width: 4px; height: 20px; background: #3b82f6; border-radius: 2px; animation: wave 0.8s ease-in-out infinite; }
-        .pulse-wave span:nth-child(2) { animation-delay: 0.1s; height: 30px; }
-        .pulse-wave span:nth-child(3) { animation-delay: 0.2s; height: 25px; }
-        @keyframes wave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
-        .stop-music-btn { background: #ef4444; color: white; border: none; border-radius: 40px; padding: 10px 24px; font-weight: bold; cursor: pointer; margin-top: 16px; }
-        .stop-music-btn:hover { background: #dc2626; transform: scale(1.02); }
-        .hidden-overlay { display: none !important; }
-        
-        /* Main content & player */
-        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow-y: auto; height: 100vh; transition: margin 0.3s ease; }
-        .player-container { flex: 1; background: #000; display: flex; justify-content: center; align-items: center; position: relative; min-height: 400px; }
-        #player { max-width: 100%; max-height: 100%; width: 100%; height: auto; object-fit: contain; }
-        .top-bar { position: sticky; top: 0; padding: 12px 20px; display: flex; justify-content: space-between; background: rgba(15,23,42,0.95); backdrop-filter: blur(10px); z-index: 50; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .icon-btn, .control-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-        .gold-info-bar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); border: 1px solid var(--gold-color); border-radius: 20px; padding: 8px 20px; backdrop-filter: blur(10px); z-index: 20; display: flex; gap: 20px; font-size: 0.8rem; color: var(--gold-light); pointer-events: none; }
-        .gold-info-section { display: flex; gap: 8px; align-items: center; }
-        .player-controls { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 20px; display: flex; gap: 12px; justify-content: center; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-        .player-container:hover .player-controls { opacity: 1; pointer-events: auto; }
-        input, button, select { padding: 8px 12px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: inherit; margin-bottom: 8px; width: 100%; }
-        button { background: var(--primary-color); cursor: pointer; font-weight: 600; }
-        .channel-list, .favorites-list, .history-list { max-height: 300px; overflow-y: auto; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
-        .debug-console { position: fixed; bottom: 0; left: 0; right: 0; background: #000000dd; color: #0f0; font-family: monospace; font-size: 11px; max-height: 130px; overflow-y: auto; z-index: 9999; display: none; padding: 8px; }
-        .debug-console.active { display: block; }
-        .date-input { background: #1e293b; border: 1px solid #334155; border-radius: 9999px; padding: 8px 16px; font-size: 0.8rem; width: 100%; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AJN · Carousel News + IPTV Archive (Fully Fixed)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-deep: #0a0c12;
+      --bg-surface: #11141c;
+      --card-bg: #1a1f2a;
+      --text-primary: #f0f3fa;
+      --text-secondary: #cbd5e6;
+      --accent: #3b82f6;
+      --border: #2d3748;
+      --hr1: #3b82f6;
+      --hr2: #f97316;
+      --hr3: #8b5cf6;
+      --special: #10b981;
+    }
+    body.light {
+      --bg-deep: #f1f5f9;
+      --bg-surface: #ffffff;
+      --card-bg: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --border: #cbd5e1;
+      --hr1: #2563eb;
+      --hr2: #ea580c;
+      --hr3: #7c3aed;
+      --special: #059669;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      padding: 20px;
+      min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
+    }
+    .skip-link { position: absolute; top: -40px; left: 0; background: var(--accent); color: white; padding: 8px 16px; z-index: 9999; border-radius: 0 0 8px 0; text-decoration: none; }
+    .skip-link:focus { top: 10px; }
+    main { max-width: 1400px; margin: 0 auto; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 16px; }
+    .logo { font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, var(--accent), #facc15); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .theme-btn { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 40px; padding: 8px 20px; color: var(--text-primary); font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; }
+    .theme-btn:hover { background: var(--accent); color: white; }
+    .main-grid { display: grid; grid-template-columns: 1fr 380px; gap: 28px; }
+    @media (max-width: 880px) { .main-grid { grid-template-columns: 1fr; } }
+    .carousel-section {
+      background: var(--bg-surface);
+      border-radius: 28px;
+      padding: 20px 0 24px 0;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .carousel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 28px 20px 28px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .carousel-header h2 { font-size: 1.2rem; font-weight: 700; background: linear-gradient(135deg, var(--accent), #facc15); -webkit-background-clip: text; background-clip: text; color: transparent; display: flex; align-items: center; gap: 8px; }
+    .carousel-controls { display: flex; gap: 10px; }
+    .carousel-controls button { background: var(--bg-deep); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; cursor: pointer; color: var(--text-primary); font-size: 0.75rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+    .carousel-controls button:hover { background: var(--accent); color: white; }
+    .modal-carousel-wrapper {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      gap: 28px;
+      padding: 8px 28px 8px 28px;
+      width: 100%;
+    }
+    .modal-carousel-wrapper::-webkit-scrollbar { height: 5px; }
+    .news-modal-card {
+      scroll-snap-align: center;
+      min-width: 65%;
+      max-width: 540px;
+      flex: 0 0 auto;
+      background: var(--card-bg);
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.25s, box-shadow 0.25s;
+    }
+    .news-modal-card:hover { transform: translateY(-5px); box-shadow: 0 20px 30px -12px rgba(0,0,0,0.4); }
+    .modal-card-content { padding: 24px; }
+    .modal-source { font-size: 0.7rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .modal-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 12px; line-height: 1.4; }
+    .modal-desc { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px; }
+    .modal-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 6px; font-size: 0.7rem; }
+    .right-panel {
+      background: var(--bg-surface);
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .player-area { background: #000; aspect-ratio: 16 / 9; width: 100%; }
+    #videoPlayer { width: 100%; height: 100%; object-fit: contain; }
+    .control-bar { display: flex; justify-content: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .ctrl-btn { background: var(--bg-deep); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 0.75rem; cursor: pointer; color: var(--text-primary); transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+    .ctrl-btn:hover { background: var(--accent); color: white; }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 12px; gap: 2px; background: var(--bg-surface); }
+    .tab { padding: 10px 14px; font-size: 0.8rem; background: transparent; border: none; color: var(--text-secondary); font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+    .tab-pane { display: none; padding: 16px; max-height: 340px; overflow-y: auto; scrollbar-width: thin; }
+    .tab-pane.active { display: block; }
+    .compact-video-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding-right: 4px; }
+    .tile-block {
+      background: linear-gradient(90deg, rgba(59,130,246,0.08) 0%, var(--bg-deep) 80%);
+      border-left: 4px solid var(--accent);
+      padding: 10px 12px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.75rem;
+      transition: 0.15s;
+    }
+    .tile-block:hover { background: rgba(59,130,246,0.2); transform: translateX(3px); }
+    .tile-block.hr1 { border-left-color: var(--hr1); }
+    .tile-block.hr2 { border-left-color: var(--hr2); }
+    .tile-block.hr3 { border-left-color: var(--hr3); }
+    .tile-block.special { border-left-color: var(--special); }
+    .tile-block span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+    .play-tile-btn { background: var(--accent); border: none; border-radius: 30px; padding: 4px 12px; font-size: 0.7rem; font-weight: 600; cursor: pointer; color: white; transition: 0.15s; }
+    .link-item { background: var(--bg-deep); padding: 8px 12px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); font-size: 0.75rem; margin-bottom: 6px; cursor: pointer; }
+    input, button { background: var(--bg-deep); border: 1px solid var(--border); border-radius: 60px; padding: 8px 14px; color: var(--text-primary); width: 100%; margin-top: 6px; font-size: 0.8rem; }
+    .url-label { font-size: 0.7rem; font-weight: 500; margin-top: 8px; display: block; }
+    .proxy-status { font-size: 0.65rem; text-align: center; margin-top: 10px; color: var(--text-secondary); }
+    .drop-zone { border: 1.5px dashed var(--accent); border-radius: 18px; padding: 12px; text-align: center; margin-bottom: 12px; cursor: pointer; font-size: 0.7rem; background: var(--bg-deep); }
+    .error-placeholder { text-align: center; padding: 30px; color: var(--text-secondary); }
+  </style>
 </head>
 <body>
-    <!-- LEFT SIDEBAR (IPTV + Archive Tabs) -->
-    <div class="sidebar">
-        <div class="sidebar-header"><div class="sidebar-title">UNIFIED PLAYER</div><div class="text-xs opacity-70">IPTV + AJN Archive</div></div>
-        <div class="tabs">
-            <div class="tab active" data-tab="playlist">📡 Playlist</div>
-            <div class="tab" data-tab="favorites">⭐ Favorites</div>
-            <div class="tab" data-tab="history">📜 History</div>
-            <div class="tab" data-tab="archive">🗄️ AJN Archive</div>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<main id="main-content">
+  <div class="top-bar">
+    <div class="logo"><i class="fas fa-newspaper"></i> AJN · Carousel News + IPTV</div>
+    <button class="theme-btn" id="themeToggle"><i class="fas fa-moon"></i> Dark/Light</button>
+  </div>
+  <div class="main-grid">
+    <div>
+      <div class="carousel-section">
+        <div class="carousel-header">
+          <h2><i class="fas fa-bullhorn"></i> Barn Door News · 5s Reading Pace</h2>
+          <div class="carousel-controls">
+            <button id="prevSlideBtn"><i class="fas fa-arrow-left"></i> Prev</button>
+            <button id="nextSlideBtn">Next <i class="fas fa-arrow-right"></i></button>
+            <button id="autoScrollToggle"><i class="fas fa-play"></i> Auto</button>
+          </div>
         </div>
-        
-        <!-- Playlist Tab -->
-        <div class="tab-content active" id="playlist-tab">
-            <input type="file" id="fileInput" accept=".m3u,.m3u8,.json,.txt">
-            <input type="text" id="urlInput" placeholder="M3U / Video URL">
-            <button id="loadUrl">📎 Load from URL</button>
-            <input type="text" id="searchInput" placeholder="🔍 Search channels">
-            <div class="channel-list" id="channelList"></div>
-        </div>
-        
-        <!-- Favorites Tab -->
-        <div class="tab-content" id="favorites-tab">
-            <button id="exportFavoritesBtn">💾 Export Favorites</button>
-            <div class="favorites-list" id="favoritesList"></div>
-        </div>
-        
-        <!-- History Tab -->
-        <div class="tab-content" id="history-tab">
-            <div class="history-list" id="historyList"></div>
-            <button id="deleteAllHistoryBtn" class="bg-red-600/40 mt-2">🗑️ Clear History</button>
-        </div>
-        
-        <!-- AJN ARCHIVE TAB (NEW) -->
-        <div class="tab-content" id="archive-tab">
-            <div class="archive-date-picker">
-                <label class="text-xs font-bold">📅 Select Date (RSS Archive)</label>
-                <input type="text" id="archiveDatePicker" class="date-input" placeholder="Pick a date" readonly>
-            </div>
-            <div class="flex gap-2 mt-2">
-                <button id="refreshArchiveBtn" class="bg-emerald-600">🔄 Refresh Archive Feed</button>
-                <button id="stopMusicBtn" class="bg-rose-600">🎵 Stop Sirius Music</button>
-            </div>
-            <div class="mt-3">
-                <div class="flex justify-between text-xs"><span>📺 Episodes</span><span id="archiveSegmentCount">0</span></div>
-                <div id="archivePlaylistContainer" class="archive-playlist mt-2 space-y-2"></div>
-            </div>
-            <div class="text-[10px] text-slate-400 mt-2" id="archiveProxyStatus"></div>
-        </div>
-        
-        <div class="sidebar-footer text-xs p-3 text-center opacity-60">Proxy Chain: allorigins.win + fallback</div>
+        <div class="modal-carousel-wrapper" id="carouselContainer"><div class="error-placeholder">Loading news feeds...</div></div>
+      </div>
     </div>
-    
-    <!-- RIGHT SETTINGS SIDEBAR -->
-    <div class="secondary-sidebar" id="secondarySidebar">
-        <div class="secondary-sidebar-header"><div class="secondary-sidebar-title">⚙️ Engine</div></div>
-        <div class="p-4">
-            <label>Stream Type</label><select id="streamType"><option value="auto">Auto</option><option value="hls">HLS</option><option value="dash">DASH</option><option value="native">Native</option></select>
-            <label>Fallback Mode</label><select id="fallbackMode"><option value="enabled">Enabled</option><option value="disabled">Disabled</option></select>
-            <label>Debug Mode</label><select id="debugMode"><option value="off">Off</option><option value="on">On</option></select>
-            <button id="resetPlayerBtn">🔄 Reset Player</button>
-            <button id="clearCacheBtn">🗑️ Clear Cache</button>
-            <div class="mt-3 text-xs"><span>Player Status:</span><span id="playerStatus">Idle</span></div>
+    <div class="right-panel">
+      <div class="player-area">
+        <video id="videoPlayer" controls playsinline preload="metadata"><track kind="captions" label="Captions" srclang="en"></video>
+      </div>
+      <div class="control-bar">
+        <button class="ctrl-btn" id="playPauseBtn"><i class="fas fa-play"></i> Play</button>
+        <button class="ctrl-btn" id="muteBtn"><i class="fas fa-volume-up"></i> Mute</button>
+        <button class="ctrl-btn" id="stopBtn"><i class="fas fa-stop"></i> Stop</button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="playlist" role="tab">📡 Playlist</button>
+        <button class="tab" data-tab="archive" role="tab">🗄️ AJN Archive</button>
+        <button class="tab" data-tab="favorites" role="tab">⭐ Favorites</button>
+      </div>
+      <div id="playlist" class="tab-pane active">
+        <div class="drop-zone" id="dropZone"><i class="fas fa-cloud-upload-alt"></i> Drop .m3u or click</div>
+        <label class="url-label">M3U / Video URL:</label>
+        <input type="text" id="urlInput" placeholder="https://example.com/stream.m3u8 or playlist.m3u">
+        <button id="loadUrlBtn">Load from URL</button>
+        <button id="savePlaylistBtn">💾 Save Playlist</button>
+        <div class="link-list" id="playlistContainer" style="max-height:160px; overflow-y:auto;"></div>
+      </div>
+      <div id="archive" class="tab-pane">
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button id="refreshArchiveBtn" style="background: var(--accent); margin:0; flex:1;">🔄 Refresh Archive</button>
         </div>
+        <div id="archiveTileContainer" class="compact-video-list"><div class="error-placeholder" style="padding:12px;">Click refresh to load videos</div></div>
+        <div id="archiveStatus" class="proxy-status">📺 AJN episodes with color coding (Hr1/Hr2/Hr3)</div>
+      </div>
+      <div id="favorites" class="tab-pane">
+        <div id="favoritesList" class="compact-video-list"></div>
+        <button id="exportFavBtn">📁 Export M3U</button>
+      </div>
     </div>
-    
-    <!-- MAIN CONTENT: VIDEO PLAYER + GOLD BAR + OVERLAYS -->
-    <div class="main-content" id="mainContent">
-        <div class="top-bar">
-            <div><button id="toggleSidebarBtn" class="icon-btn"><i data-feather="menu"></i></button>
-            <button id="toggleSettingsBtn" class="icon-btn"><i data-feather="settings"></i></button>
-            <button id="toggleThemeBtn" class="icon-btn"><i data-feather="moon"></i></button></div>
-            <div class="local-time" id="localTime">--:--</div>
-        </div>
-        <div class="player-container">
-            <div class="gold-info-bar" id="goldInfoBar">
-                <div class="gold-info-section"><span class="gold-info-title">NOW:</span><span id="goldCurrentTime">--:--:--</span></div>
-                <div class="gold-info-section"><span class="gold-info-title">PLAYING:</span><span id="goldCurrentChannel">No Channel</span></div>
-                <div class="gold-info-section"><span class="gold-info-title">⏱️ NEXT:</span><span id="goldNextShow">Archive</span><span id="goldCountdown">--:--</span></div>
-            </div>
-            <video id="player" controls poster="https://placehold.co/1280x720/0f172a/3b82f6?text=AJN+IPTV">Your browser does not support video.</video>
-            <div class="player-controls">
-                <button class="control-btn" id="prevChannelBtn"><i data-feather="skip-back"></i></button>
-                <button class="control-btn" id="playPauseBtn"><i data-feather="play"></i></button>
-                <button class="control-btn" id="nextChannelBtn"><i data-feather="skip-forward"></i></button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- SIRIUS MUSIC OVERLAY (AJN STYLE) -->
-    <div id="siriusOverlay" class="music-overlay-global hidden-overlay">
-        <div class="music-overlay-content">
-            <div class="vinyl-spinner"></div>
-            <div class="pulse-wave"><span></span><span></span><span></span><span></span><span></span></div>
-            <div class="overlay-title text-white text-xl font-bold mt-2">🎵 The Alan Parsons Project · Sirius</div>
-            <div id="overlayStatusMsg" class="text-sm text-slate-300">Initializing AJN Archive Matrix...</div>
-            <button id="stopMusicAndPlayArchiveBtn" class="stop-music-btn mt-4">▶️ Stop Music & Play Video</button>
-            <button id="manualRetryArchiveBtn" class="retry-fetch-btn bg-amber-600 mt-2 hidden">🔄 Retry Archive Fetch</button>
-        </div>
-    </div>
-    
-    <!-- DEBUG CONSOLE -->
-    <div id="debugConsole" class="debug-console"></div>
+  </div>
+</main>
 
-    <script>
-        // ======================== GLOBAL STATE ========================
-        let allChannels = [];
-        let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-        let history = JSON.parse(localStorage.getItem('history') || '[]');
-        let currentChannelUrl = null;
-        let hlsPlayer = null, dashPlayer = null;
-        
-        // AJN Archive specific
-        let allArchiveEpisodes = [];       // raw episodes
-        let episodesByDate = {};
-        let availableDates = [];
-        let currentArchivePlaylist = [];
-        let currentArchiveIndex = 0;
-        let flatpickrInstance = null;
-        let archiveFetchInProgress = false;
-        
-        // Sirius Audio
-        let siriusAudio = null;
-        let isSiriusPlaying = false;
-        
-        // Player settings
-        let playerState = { streamType: 'auto', fallbackMode: 'enabled', debugMode: 'off' };
-        
-        // Helper: Debug log
-        function debugLog(msg, type='info') { 
-            const consoleDiv = document.getElementById('debugConsole');
-            if(playerState.debugMode === 'on' && consoleDiv){
-                const entry = document.createElement('div');
-                entry.className = `debug-${type}`;
-                entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-                consoleDiv.appendChild(entry);
-                consoleDiv.scrollTop = consoleDiv.scrollHeight;
-            }
-            console.log(`[${type}] ${msg}`);
+<script>
+  // ========== HELPER: PROXY CHAIN ==========
+  const PROXY_LIST = [
+    (url) => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`),
+    (url) => fetch(`https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`),
+    (url) => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`)
+  ];
+  async function fetchWithProxyChain(url, timeoutMs = 10000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    for (let i = 0; i < PROXY_LIST.length; i++) {
+      try {
+        const res = await PROXY_LIST[i](url, { signal: controller.signal });
+        if (res.ok) {
+          const text = await res.text();
+          clearTimeout(timeoutId);
+          return text;
         }
-        
-        // ========== SIRIUS AUDIO ENGINE ==========
-        const SIRIUS_URLS = [
-            'https://raw.githubusercontent.com/banamine/AJN-Resource-Hub/main/The%20Alan%20Parsons%20Project%20-%20Sirius%20(Official%20Audio).mp3',
-            'https://archive.org/download/a-132-5_20260424/1.%20The%20Alan%20Parsons%20Project%20-%20Sirius%20%28Official%20Audio%29.mp4'
-        ];
-        function initSiriusAudio() { if(!siriusAudio) { siriusAudio = new Audio(); siriusAudio.loop = true; siriusAudio.volume = 0.3; } }
-        async function startSiriusMusic() {
-            if(!siriusAudio) initSiriusAudio();
-            try { await siriusAudio.play(); siriusAudio.currentTime = 25; isSiriusPlaying = true; } catch(e) { debugLog("Sirius autoplay blocked", "warning"); }
+      } catch (e) { console.warn(`Proxy ${i+1} failed:`, e); }
+    }
+    clearTimeout(timeoutId);
+    throw new Error('All proxies failed');
+  }
+
+  // ========== 1. CAROUSEL NEWS (WORKING FEEDS) ==========
+  let carouselItems = [];
+  let autoInterval = null;
+  let autoActive = true;
+  const carouselContainer = document.getElementById('carouselContainer');
+  const prevBtn = document.getElementById('prevSlideBtn');
+  const nextBtn = document.getElementById('nextSlideBtn');
+  const autoToggle = document.getElementById('autoScrollToggle');
+
+  const RSS_FEEDS = [
+    'https://www.labnol.org/rss.xml',
+    'https://techcrunch.com/feed/',
+    'https://www.sciencedaily.com/rss/top.xml',
+    'https://yourstory.com/feed',
+    'https://fossbytes.com/feed/',
+    'https://techpp.com/feed/',
+    'https://www.wired.com/feed/rss',
+    'https://mashable.com/feeds/rss/all',
+    'https://www.cnet.com/rss/news/'
+  ];
+
+  async function fetchSingleFeed(url) {
+    try {
+      const xmlText = await fetchWithProxyChain(url, 8000);
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, "application/xml");
+      if (xml.querySelector('parsererror')) return [];
+      const items = Array.from(xml.querySelectorAll("item")).slice(0, 3);
+      return items.map(item => ({
+        title: item.querySelector("title")?.textContent?.trim() || "Untitled",
+        link: item.querySelector("link")?.textContent?.trim() || "#",
+        pubDate: item.querySelector("pubDate")?.textContent || new Date().toUTCString(),
+        description: item.querySelector("description")?.textContent?.replace(/<[^>]*>/g, '').slice(0, 200) || ""
+      }));
+    } catch(e) { console.warn(`Feed error ${url}:`, e); return []; }
+  }
+
+  async function loadCarouselNews() {
+    carouselContainer.innerHTML = '<div class="error-placeholder">Fetching news...</div>';
+    try {
+      const results = await Promise.all(RSS_FEEDS.map(fetchSingleFeed));
+      let articles = results.flat();
+      if (articles.length === 0) throw new Error('No articles loaded');
+      articles.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
+      carouselItems = articles.slice(0, 14);
+      renderCarousel();
+      startAutoScroll();
+    } catch(e) {
+      console.error(e);
+      carouselContainer.innerHTML = '<div class="error-placeholder">⚠️ Unable to load news. Check network or try again.</div>';
+    }
+  }
+
+  function renderCarousel() {
+    if (!carouselItems.length) { carouselContainer.innerHTML = '<div class="error-placeholder">No articles available</div>'; return; }
+    carouselContainer.innerHTML = carouselItems.map(article => {
+      let host = "source";
+      try { host = new URL(article.link).hostname.replace('www.', '').split('.')[0]; } catch(e) {}
+      return `<div class="news-modal-card" data-url="${escapeHtml(article.link)}"><div class="modal-card-content"><div class="modal-source">${escapeHtml(host)}</div><div class="modal-title">${escapeHtml(article.title)}</div><div class="modal-desc">${escapeHtml(article.description)}${article.description ? '...' : ''}</div><div class="modal-footer"><span><i class="far fa-clock"></i> ${new Date(article.pubDate).toLocaleDateString()}</span><span style="color:var(--accent);">Read →</span></div></div></div>`;
+    }).join('');
+    document.querySelectorAll('.news-modal-card').forEach(card => {
+      card.addEventListener('click', () => window.open(card.dataset.url, '_blank', 'noopener,noreferrer'));
+    });
+  }
+
+  function startAutoScroll() {
+    if (autoInterval) clearInterval(autoInterval);
+    if (!autoActive) return;
+    autoInterval = setInterval(() => {
+      if (!carouselContainer) return;
+      const maxScroll = carouselContainer.scrollWidth - carouselContainer.clientWidth;
+      if (carouselContainer.scrollLeft + 10 >= maxScroll) {
+        carouselContainer.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        const firstCard = carouselContainer.querySelector('.news-modal-card');
+        if (firstCard) carouselContainer.scrollBy({ left: firstCard.offsetWidth + 28, behavior: 'smooth' });
+        else carouselContainer.scrollBy({ left: 380, behavior: 'smooth' });
+      }
+    }, 5000);
+  }
+  function stopAutoScroll() { if (autoInterval) { clearInterval(autoInterval); autoInterval = null; } }
+  prevBtn.addEventListener('click', () => { stopAutoScroll(); carouselContainer.scrollBy({ left: -450, behavior: 'smooth' }); if(autoActive) startAutoScroll(); });
+  nextBtn.addEventListener('click', () => { stopAutoScroll(); carouselContainer.scrollBy({ left: 450, behavior: 'smooth' }); if(autoActive) startAutoScroll(); });
+  autoToggle.addEventListener('click', () => {
+    autoActive = !autoActive;
+    if (autoActive) { startAutoScroll(); autoToggle.innerHTML = '<i class="fas fa-pause"></i> Auto'; }
+    else { stopAutoScroll(); autoToggle.innerHTML = '<i class="fas fa-play"></i> Auto'; }
+  });
+
+  // ========== 2. AJN ARCHIVE TILES (COLOR CODED: Hr1/Hr2/Hr3) ==========
+  function getTileClass(title) {
+    const t = title.toLowerCase();
+    if (t.includes('hr1') || t.includes('alex-hr1') || t.includes('warroom-hr1')) return 'hr1';
+    if (t.includes('hr2') || t.includes('alex-hr2') || t.includes('warroom-hr2')) return 'hr2';
+    if (t.includes('hr3') || t.includes('alex-hr3') || t.includes('warroom-hr3')) return 'hr3';
+    if (t.includes('special') || t.includes('sundaylive') || t.includes('tnt')) return 'special';
+    return 'hr1';
+  }
+
+  async function fetchAJNArchiveTiles() {
+    const statusDiv = document.getElementById('archiveStatus');
+    const container = document.getElementById('archiveTileContainer');
+    statusDiv.innerHTML = '🔄 Fetching AJN archive via proxy chain...';
+    container.innerHTML = '<div class="error-placeholder" style="padding:12px;">Loading episodes...</div>';
+    try {
+      const targetUrl = 'https://rss.alexjones.media/AJNHourlyVideo.html';
+      const html = await fetchWithProxyChain(targetUrl, 10000);
+      let matches = [];
+      const plainRegex = /(https?:\/\/[^\s"'<>]+\.m4v)/gi;
+      let m;
+      while ((m = plainRegex.exec(html)) !== null) {
+        let url = m[1];
+        if (!matches.some(x => x.url === url)) {
+          let title = url.split('/').pop().replace('.m4v', '').replace(/_/g, ' ');
+          matches.push({ url, title: title.substring(0, 55) });
         }
-        function stopSiriusMusic() { if(siriusAudio) { siriusAudio.pause(); siriusAudio.currentTime = 0; isSiriusPlaying = false; } }
-        
-        // Show/hide overlay
-        function showSiriusOverlay(show, msg="Loading Archive...") {
-            const overlay = document.getElementById('siriusOverlay');
-            if(show) {
-                overlay.classList.remove('hidden-overlay');
-                document.getElementById('overlayStatusMsg').innerText = msg;
-                startSiriusMusic();
-            } else { overlay.classList.add('hidden-overlay'); stopSiriusMusic(); }
+      }
+      const linkRegex = /href="([^"]+\.m4v[^"]*)"/gi;
+      while ((m = linkRegex.exec(html)) !== null) {
+        let url = m[1];
+        if (url.startsWith('/')) url = 'https://rss.alexjones.media' + url;
+        if (!matches.some(x => x.url === url)) {
+          let title = url.split('/').pop().replace('.m4v', '');
+          matches.push({ url, title: title.substring(0, 55) });
         }
-        
-        // ========== PROXY CHAIN FOR RSS (2026 OPTIMIZED) ==========
-        const RSS_URL = 'https://rss.alexjones.media/AJNHourlyVideo.xml';
-        async function fetchRSSWithProxy() {
-            const proxies = [
-                async (url) => { let res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`); if(!res.ok) throw new Error('raw failed'); return await res.text(); },
-                async (url) => { let res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`); if(!res.ok) throw new Error('get failed'); let json = await res.json(); return json.contents; },
-                async (url) => { let res = await fetch(`/?url=${encodeURIComponent(url)}`); if(!res.ok) throw new Error('worker proxy failed'); return await res.text(); }
-            ];
-            for(let proxyFn of proxies) {
-                try { return await proxyFn(RSS_URL); } catch(e) { debugLog(`Proxy attempt failed: ${e.message}`, "warning"); continue; }
-            }
-            throw new Error("All CORS proxies exhausted");
+      }
+      if (matches.length === 0) throw new Error('No videos found');
+      const shortList = matches.slice(0, 10);
+      container.innerHTML = '';
+      shortList.forEach(v => {
+        const tileClass = getTileClass(v.title);
+        const tile = document.createElement('div');
+        tile.className = `tile-block ${tileClass}`;
+        tile.setAttribute('data-url', v.url);
+        tile.innerHTML = `<span><i class="fas fa-video"></i> ${escapeHtml(v.title)}</span><button class="play-tile-btn">▶ Play</button>`;
+        tile.addEventListener('click', (e) => { if (!e.target.classList.contains('play-tile-btn')) playWithRecovery(v.url); });
+        tile.querySelector('.play-tile-btn')?.addEventListener('click', (e) => { e.stopPropagation(); playWithRecovery(v.url); });
+        container.appendChild(tile);
+      });
+      statusDiv.innerHTML = `✅ ${shortList.length} episodes (color coded: Hr1🔵 Hr2🟠 Hr3🟣). Click to play.`;
+    } catch(e) {
+      console.warn(e);
+      statusDiv.innerHTML = '⚠️ Archive unavailable. Try later.';
+      container.innerHTML = '<div class="error-placeholder" style="padding:12px;">Unable to load videos</div>';
+    }
+  }
+  document.getElementById('refreshArchiveBtn')?.addEventListener('click', fetchAJNArchiveTiles);
+
+  // ========== 3. IPTV PLAYER (FIXED) ==========
+  let video = document.getElementById('videoPlayer');
+  let hlsPlayer = null;
+  let dashPlayer = null;
+  let currentPlaylist = [];
+  let favorites = JSON.parse(localStorage.getItem('ajnFavorites') || '[]');
+
+  function fullCleanup() {
+    if (hlsPlayer) { try { hlsPlayer.destroy(); } catch(e) { console.warn(e); } hlsPlayer = null; }
+    if (dashPlayer) { try { dashPlayer.destroy(); } catch(e) { console.warn(e); } dashPlayer = null; }
+  }
+
+  function playWithRecovery(url) {
+    if (!url) return;
+    fullCleanup();
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    if (url.includes('.m3u8') && Hls.isSupported()) {
+      hlsPlayer = new Hls({ debug: false, enableWorker: true });
+      hlsPlayer.loadSource(url);
+      hlsPlayer.attachMedia(video);
+      hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(e=>console.warn(e)));
+      hlsPlayer.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hlsPlayer.startLoad();
+          else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hlsPlayer.recoverMediaError();
+          else fullCleanup();
         }
-        
-        function parseRSSEpisodes(xmlText) {
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(xmlText, "application/xml");
-            if(xml.querySelector('parsererror')) throw new Error("XML parse error");
-            const items = xml.querySelectorAll('item');
-            let episodes = [];
-            items.forEach(item => {
-                let title = item.querySelector('title')?.textContent?.trim() || '';
-                let enclosure = item.querySelector('enclosure');
-                let videoUrl = enclosure?.getAttribute('url') || '';
-                if(!videoUrl || !videoUrl.includes('.m4v')) return;
-                let pubDate = item.querySelector('pubDate')?.textContent ? new Date(item.querySelector('pubDate').textContent) : new Date();
-                let dateKey = `${pubDate.getFullYear()}-${String(pubDate.getMonth()+1).padStart(2,'0')}-${String(pubDate.getDate()).padStart(2,'0')}`;
-                let show = title.includes('War Room') ? 'War Room' : (title.includes('Sunday Night') ? 'Sunday Night Live' : 'Alex Jones');
-                let hourMatch = title.match(/Hr(\d)/i);
-                let hour = hourMatch ? `Hr${hourMatch[1]}` : '';
-                episodes.push({ id: videoUrl, title, videoUrl, pubDate, dateKey, show, hour });
-            });
-            episodes.sort((a,b)=>b.pubDate - a.pubDate);
-            return episodes;
-        }
-        
-        async function loadArchiveFeed(showOverlay=true) {
-            if(archiveFetchInProgress) return;
-            archiveFetchInProgress = true;
-            document.getElementById('archiveProxyStatus').innerText = '🌐 Fetching RSS via allorigins.win/raw...';
-            if(showOverlay) showSiriusOverlay(true, "Fetching AJN Full Archive (RSS)");
-            try {
-                const xmlText = await fetchRSSWithProxy();
-                const episodes = parseRSSEpisodes(xmlText);
-                if(!episodes.length) throw new Error("No episodes found");
-                allArchiveEpisodes = episodes;
-                episodesByDate = {};
-                episodes.forEach(ep => { if(!episodesByDate[ep.dateKey]) episodesByDate[ep.dateKey] = []; episodesByDate[ep.dateKey].push(ep); });
-                availableDates = Object.keys(episodesByDate).sort().reverse();
-                document.getElementById('archiveProxyStatus').innerHTML = `✅ Loaded ${availableDates.length} dates, ${episodes.length} segments`;
-                // init flatpickr with enabled dates
-                if(flatpickrInstance) flatpickrInstance.destroy();
-                flatpickrInstance = flatpickr("#archiveDatePicker", {
-                    dateFormat: "Y-m-d",
-                    onChange: (dates) => { if(dates.length) { let ymd = `${dates[0].getFullYear()}-${String(dates[0].getMonth()+1).padStart(2,'0')}-${String(dates[0].getDate()).padStart(2,'0')}`; if(episodesByDate[ymd]) renderArchivePlaylist(episodesByDate[ymd]); } }
-                });
-                const dateObjs = availableDates.map(d=>new Date(d));
-                flatpickrInstance.set('enable', dateObjs);
-                if(availableDates.length) { flatpickrInstance.setDate(availableDates[0]); renderArchivePlaylist(episodesByDate[availableDates[0]]); }
-                if(showOverlay) { document.getElementById('overlayStatusMsg').innerText = "Archive ready. Press 'Stop Music & Play Video' to start."; }
-                debugLog(`Archive loaded: ${episodes.length} episodes`, "info");
-            } catch(err) {
-                debugLog(`Archive fetch error: ${err.message}`, "error");
-                document.getElementById('archiveProxyStatus').innerHTML = `⚠️ Failed: ${err.message}`;
-                if(showOverlay) document.getElementById('overlayStatusMsg').innerText = "Failed to load RSS. Click Retry.";
-                document.getElementById('manualRetryArchiveBtn').classList.remove('hidden');
-            } finally { archiveFetchInProgress = false; }
-        }
-        
-        function renderArchivePlaylist(playlist) {
-            currentArchivePlaylist = playlist;
-            const container = document.getElementById('archivePlaylistContainer');
-            if(!playlist.length) { container.innerHTML = '<div class="text-slate-400 text-center">No episodes for this date</div>'; document.getElementById('archiveSegmentCount').innerText = '0'; return; }
-            document.getElementById('archiveSegmentCount').innerText = playlist.length;
-            container.innerHTML = playlist.map((ep, idx) => `
-                <div class="archive-segment ${idx === currentArchiveIndex ? 'archive-segment-active' : ''}" data-idx="${idx}">
-                    <div class="flex justify-between"><span class="font-bold text-sm">${ep.show}</span><span class="text-xs">${ep.hour || ''}</span></div>
-                    <div class="text-xs truncate">${ep.title.substring(0,60)}</div>
-                </div>
-            `).join('');
-            container.querySelectorAll('.archive-segment').forEach(el => {
-                el.addEventListener('click', () => { 
-                    let idx = parseInt(el.dataset.idx);
-                    currentArchiveIndex = idx;
-                    renderArchivePlaylist(currentArchivePlaylist);
-                    playArchiveVideo(currentArchivePlaylist[idx]);
-                });
-            });
-        }
-        
-        function playArchiveVideo(ep) {
-            if(!ep) return;
-            stopSiriusMusic();
-            const video = document.getElementById('player');
-            if(hlsPlayer) hlsPlayer.destroy();
-            if(dashPlayer) dashPlayer.reset();
-            video.src = ep.videoUrl;
-            video.load();
-            video.play().catch(e=>debugLog(`Video autoplay: ${e.message}`,"warning"));
-            currentChannelUrl = ep.videoUrl;
-            document.getElementById('goldCurrentChannel').innerText = ep.title.substring(0,40);
-            document.getElementById('overlayStatusMsg').innerText = `Now playing: ${ep.title}`;
-            // hide overlay if visible
-            document.getElementById('siriusOverlay').classList.add('hidden-overlay');
-            stopSiriusMusic();
-            // add to history
-            history.unshift({ type: 'archive', name: `AJN: ${ep.title}`, url: ep.videoUrl });
-            localStorage.setItem('history', JSON.stringify(history.slice(0,50)));
-            displayHistory();
-        }
-        
-        // ========== IPTV CORE (M3U, Favorites, History) ==========
-        function parseM3U(content) {
-            let lines = content.split('\n');
-            let channels = [];
-            let curr = null;
-            for(let line of lines){
-                line = line.trim();
-                if(line.startsWith('#EXTINF')){
-                    let nameMatch = line.match(/,([^,]+)$/);
-                    let logoMatch = line.match(/tvg-logo="([^"]+)"/i);
-                    curr = { name: nameMatch ? nameMatch[1] : 'Channel', logo: logoMatch ? logoMatch[1] : null, url: null };
-                } else if(line && !line.startsWith('#') && curr){
-                    if(line.startsWith('http')){ curr.url = line; channels.push(curr); curr = null; }
-                }
-            }
-            allChannels = channels;
-            localStorage.setItem('lastPlaylist', JSON.stringify(channels));
-            displayChannels(channels);
-            if(channels.length) playStream(channels[0].url);
-            showPlayerNotification(`Loaded ${channels.length} channels`, 2000);
-        }
-        
-        function displayChannels(channels) {
-            const container = document.getElementById('channelList');
-            if(!channels.length) { container.innerHTML = '<div class="text-center p-4">No channels</div>'; return; }
-            container.innerHTML = channels.map((ch,i)=>`<button class="channel-btn w-full text-left p-2 rounded mb-1 flex items-center gap-2" data-url="${escapeHtml(ch.url)}"><img src="${ch.logo || 'https://placehold.co/30x30'}" class="w-6 h-6 rounded" onerror="this.src='https://placehold.co/30x30'"> <span class="truncate">${escapeHtml(ch.name)}</span> ${favorites.some(f=>f.url===ch.url)?'⭐':''}</button>`).join('');
-            container.querySelectorAll('.channel-btn').forEach(btn=>btn.addEventListener('click',()=>playStream(btn.dataset.url)));
-        }
-        
-        function playStream(url, retry=false) {
-            if(!url) return;
-            const video = document.getElementById('player');
-            if(hlsPlayer) hlsPlayer.destroy();
-            if(dashPlayer) dashPlayer.reset();
-            currentChannelUrl = url;
-            const streamType = playerState.streamType === 'auto' ? (url.includes('.m3u8')?'hls':(url.includes('.mpd')?'dash':'native')) : playerState.streamType;
-            if(streamType === 'hls' && Hls.isSupported()){ hlsPlayer = new Hls(); hlsPlayer.loadSource(url); hlsPlayer.attachMedia(video); hlsPlayer.on(Hls.Events.MANIFEST_PARSED,()=>video.play()); }
-            else if(streamType === 'dash' && dashjs){ dashPlayer = dashjs.MediaPlayer().create(); dashPlayer.initialize(video, url, false); video.play(); }
-            else { video.src = url; video.load(); video.play(); }
-            document.getElementById('goldCurrentChannel').innerText = url.split('/').pop() || 'Stream';
-            history.unshift({ type: 'stream', name: url.substring(0,40), url: url });
-            localStorage.setItem('history', JSON.stringify(history.slice(0,50)));
-            displayHistory();
-        }
-        
-        function displayFavorites(){ let fList = document.getElementById('favoritesList'); if(!favorites.length){ fList.innerHTML='<p>No favorites</p>'; return; } fList.innerHTML = favorites.map(f=>`<button class="fav-btn w-full text-left p-2 rounded" data-url="${escapeHtml(f.url)}">⭐ ${escapeHtml(f.name)}</button>`).join(''); document.querySelectorAll('.fav-btn').forEach(btn=>btn.addEventListener('click',()=>playStream(btn.dataset.url))); }
-        function displayHistory(){ let hDiv = document.getElementById('historyList'); if(!history.length){ hDiv.innerHTML='<p>No history</p>'; return; } hDiv.innerHTML = history.slice(0,20).map((h,i)=>`<button class="hist-btn w-full text-left p-1 text-sm" data-url="${escapeHtml(h.url||'')}">📺 ${escapeHtml(h.name||h.url||'unknown')}</button>`).join(''); document.querySelectorAll('.hist-btn').forEach(btn=>btn.addEventListener('click',()=>playStream(btn.dataset.url))); }
-        function showPlayerNotification(msg, duration=2000){ let notif = document.getElementById('playerNotification')|| (()=>{let d=document.createElement('div'); d.id='playerNotification'; d.className='fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white p-2 rounded-full z-50 text-sm'; document.body.appendChild(d); return d;})(); notif.innerText=msg; notif.style.display='block'; setTimeout(()=>notif.style.display='none',duration);}
-        function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>]/g, function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
-        
-        // ========== UI EVENT BINDINGS ==========
-        document.getElementById('toggleSidebarBtn').onclick = ()=>document.querySelector('.sidebar').classList.toggle('hidden');
-        document.getElementById('toggleSettingsBtn').onclick = ()=>document.getElementById('secondarySidebar').classList.toggle('active');
-        document.getElementById('toggleThemeBtn').onclick = ()=>{ document.body.classList.toggle('light'); localStorage.setItem('theme',document.body.classList.contains('light')?'light':'dark'); };
-        if(localStorage.getItem('theme')==='light') document.body.classList.add('light');
-        document.getElementById('loadUrl').onclick = ()=>{ let u = document.getElementById('urlInput').value; if(u.endsWith('.m3u')||u.endsWith('.m3u8')) fetch(u).then(r=>r.text()).then(parseM3U).catch(e=>showPlayerNotification("Failed M3U")); else playStream(u); };
-        document.getElementById('fileInput').onchange = (e)=>{ let f=e.target.files[0]; if(f){ let reader=new FileReader(); reader.onload=ev=>{ if(f.name.includes('.m3u')) parseM3U(ev.target.result); else playStream(ev.target.result); }; reader.readAsText(f); } };
-        document.getElementById('exportFavoritesBtn').onclick = ()=>{ let m3u="#EXTM3U\n"; favorites.forEach(f=>{ m3u+=`#EXTINF:-1,${f.name}\n${f.url}\n`; }); let blob=new Blob([m3u],{type:'audio/x-mpegurl'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='favorites.m3u'; a.click(); };
-        document.getElementById('deleteAllHistoryBtn').onclick = ()=>{ history=[]; localStorage.setItem('history','[]'); displayHistory(); };
-        document.getElementById('refreshArchiveBtn').onclick = ()=>loadArchiveFeed(true);
-        document.getElementById('stopMusicAndPlayArchiveBtn').onclick = ()=>{ stopSiriusMusic(); document.getElementById('siriusOverlay').classList.add('hidden-overlay'); if(currentArchivePlaylist.length) playArchiveVideo(currentArchivePlaylist[currentArchiveIndex]); };
-        document.getElementById('manualRetryArchiveBtn').onclick = ()=>{ document.getElementById('manualRetryArchiveBtn').classList.add('hidden'); loadArchiveFeed(true); };
-        document.getElementById('stopMusicBtn').onclick = ()=>{ stopSiriusMusic(); document.getElementById('siriusOverlay').classList.add('hidden-overlay'); };
-        document.getElementById('resetPlayerBtn').onclick = ()=>{ if(hlsPlayer)hlsPlayer.destroy(); if(dashPlayer)dashPlayer.reset(); document.getElementById('player').src=''; };
-        document.getElementById('clearCacheBtn').onclick = ()=>{ localStorage.clear(); allChannels=[]; favorites=[]; history=[]; displayChannels([]); displayFavorites(); displayHistory(); showPlayerNotification("Cache cleared"); };
-        document.getElementById('playPauseBtn').onclick = ()=>{ let v=document.getElementById('player'); v.paused?v.play():v.pause(); };
-        document.getElementById('prevChannelBtn').onclick = ()=>{ if(allChannels.length){ let idx = allChannels.findIndex(c=>c.url===currentChannelUrl); let prev = idx>0?idx-1:allChannels.length-1; playStream(allChannels[prev].url); } };
-        document.getElementById('nextChannelBtn').onclick = ()=>{ if(allChannels.length){ let idx = allChannels.findIndex(c=>c.url===currentChannelUrl); let next = (idx+1)%allChannels.length; playStream(allChannels[next].url); } };
-        document.getElementById('streamType').onchange = (e)=>playerState.streamType=e.target.value;
-        document.getElementById('fallbackMode').onchange = (e)=>playerState.fallbackMode=e.target.value;
-        document.getElementById('debugMode').onchange = (e)=>{ playerState.debugMode=e.target.value; document.getElementById('debugConsole').classList.toggle('active', e.target.value==='on'); };
-        
-        // Local time & gold bar updates
-        function updateLocalTime(){ let d=new Date(); document.getElementById('localTime').innerText=d.toLocaleTimeString(); document.getElementById('goldCurrentTime').innerText=d.toLocaleTimeString(); }
-        setInterval(updateLocalTime,1000);
-        
-        // Init default playlist
-        const defaultM3U = `#EXTM3U\n#EXTINF:-1,🎬 Demo Stream\nhttps://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8\n#EXTINF:-1,📺 Sample MP4\nhttps://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4`;
-        parseM3U(defaultM3U);
-        displayFavorites();
-        displayHistory();
-        // Load AJN Archive silently in background after 1s
-        setTimeout(()=>{ loadArchiveFeed(false); }, 800);
-        initSiriusAudio();
-        debugLog("Unified Player: IPTV + AJN Archive ready", "info");
-    </script>
+      });
+    } else if (url.includes('.mpd') && typeof dashjs !== 'undefined' && dashjs.MediaPlayer) {
+      dashPlayer = dashjs.MediaPlayer().create();
+      dashPlayer.initialize(video, url, true);
+      dashPlayer.on('error', () => fullCleanup());
+    } else {
+      video.src = url;
+      video.load();
+      video.play().catch(e=>console.warn(e));
+    }
+  }
+
+  function parseM3U(content) {
+    const lines = content.split(/\r?\n/);
+    let channels = [];
+    let current = null;
+    for (let line of lines) {
+      line = line.trim();
+      if (line.startsWith('#EXTINF')) {
+        let nameMatch = line.match(/,([^,]+)$/);
+        current = { name: nameMatch ? nameMatch[1] : 'Channel', url: null };
+      } else if (line && !line.startsWith('#') && current && line.startsWith('http')) {
+        current.url = line;
+        channels.push(current);
+        current = null;
+      }
+    }
+    if (channels.length) {
+      currentPlaylist = channels;
+      renderPlaylist();
+      if (channels.length) playWithRecovery(channels[0].url);
+    } else {
+      let urlMatch = content.match(/https?:\/\/[^\s]+/);
+      if (urlMatch) {
+        currentPlaylist = [{ name: "Stream", url: urlMatch[0] }];
+        renderPlaylist();
+        playWithRecovery(urlMatch[0]);
+      }
+    }
+  }
+
+  function renderPlaylist() {
+    const container = document.getElementById('playlistContainer');
+    if (!currentPlaylist.length) { container.innerHTML = '<div style="text-align:center;">No playlist loaded</div>'; return; }
+    container.innerHTML = currentPlaylist.slice(0,12).map(item => `<div class="link-item" data-url="${escapeHtml(item.url)}"><span><i class="fas fa-play-circle"></i> ${escapeHtml(item.name)}</span><button class="save-fav-btn" data-url="${escapeHtml(item.url)}" data-name="${escapeHtml(item.name)}">⭐</button></div>`).join('');
+    container.querySelectorAll('.link-item').forEach(el => {
+      el.addEventListener('click', (e) => { if (!e.target.classList.contains('save-fav-btn')) playWithRecovery(el.dataset.url); });
+      el.querySelector('.save-fav-btn')?.addEventListener('click', (e) => { e.stopPropagation(); let url=el.dataset.url, name=el.querySelector('span')?.innerText||'video'; if(!favorites.some(f=>f.url===url)){ favorites.push({name,url}); localStorage.setItem('ajnFavorites',JSON.stringify(favorites)); renderFavorites(); alert('Saved to favorites'); } });
+    });
+  }
+
+  function renderFavorites() {
+    const container = document.getElementById('favoritesList');
+    if (!favorites.length) { container.innerHTML = '<div class="error-placeholder" style="padding:12px;">No favorites yet</div>'; return; }
+    container.innerHTML = favorites.slice(0,12).map(fav => `<div class="tile-block special" data-url="${escapeHtml(fav.url)}"><span><i class="fas fa-star"></i> ${escapeHtml(fav.name)}</span><button class="remove-fav" style="background:#ef4444; border:none; border-radius:20px; padding:2px 10px;">✖</button></div>`).join('');
+    container.querySelectorAll('.tile-block').forEach(el => {
+      el.addEventListener('click', (e) => { if (!e.target.classList.contains('remove-fav')) playWithRecovery(el.dataset.url); });
+      el.querySelector('.remove-fav')?.addEventListener('click', (e) => { e.stopPropagation(); favorites = favorites.filter(f=>f.url !== el.dataset.url); localStorage.setItem('ajnFavorites', JSON.stringify(favorites)); renderFavorites(); });
+    });
+  }
+
+  // URL handler
+  const urlInput = document.getElementById('urlInput');
+  async function handleUrlInput() {
+    let rawUrl = urlInput.value.trim();
+    if (!rawUrl) return;
+    if (rawUrl.endsWith('.m3u') || rawUrl.endsWith('.m3u8')) {
+      try { let resp = await fetch(rawUrl); parseM3U(await resp.text()); } catch(e) { alert('Invalid M3U'); console.warn(e); }
+    } else if (rawUrl.match(/\.(mp4|m4v|m3u8)/i)) playWithRecovery(rawUrl);
+    else { alert('Enter a valid stream URL or M3U playlist'); }
+  }
+
+  // Event listeners
+  document.getElementById('stopBtn').addEventListener('click', () => { fullCleanup(); video.pause(); video.removeAttribute('src'); video.load(); });
+  document.getElementById('playPauseBtn').addEventListener('click', () => video.paused ? video.play() : video.pause());
+  document.getElementById('muteBtn').addEventListener('click', () => { video.muted = !video.muted; });
+  document.getElementById('loadUrlBtn').addEventListener('click', handleUrlInput);
+  document.getElementById('savePlaylistBtn').addEventListener('click', () => { if(currentPlaylist.length){ localStorage.setItem('ajnCurrentPlaylist', JSON.stringify(currentPlaylist)); alert('Playlist saved'); } });
+  document.getElementById('exportFavBtn').addEventListener('click', () => { let m3u = "#EXTM3U\n" + favorites.map(f => `#EXTINF:-1,${f.name}\n${f.url}`).join('\n'); let blob=new Blob([m3u],{type:'audio/x-mpegurl'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='favorites.m3u'; a.click(); });
+  
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background = 'rgba(59,130,246,0.2)'; });
+  dropZone.addEventListener('dragleave', () => dropZone.style.background = '');
+  dropZone.addEventListener('drop', async e => { e.preventDefault(); dropZone.style.background = ''; const file = e.dataTransfer.files[0]; if(file && (file.name.endsWith('.m3u')||file.name.endsWith('.txt'))) parseM3U(await file.text()); else alert('Drop .m3u file'); });
+  dropZone.addEventListener('click', () => { let inp = document.createElement('input'); inp.type='file'; inp.accept='.m3u,.txt'; inp.onchange= async ev => { if(ev.target.files.length) parseM3U(await ev.target.files[0].text()); }; inp.click(); });
+  
+  document.querySelectorAll('.tab').forEach(btn => { btn.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active')); btn.classList.add('active'); document.getElementById(btn.dataset.tab).classList.add('active'); }); });
+  
+  // THEME PERSISTENCE (matching other button styles)
+  const themeToggle = document.getElementById('themeToggle');
+  const savedTheme = localStorage.getItem('ajn_theme');
+  if (savedTheme === 'light') document.body.classList.add('light');
+  themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('light');
+    const isLight = document.body.classList.contains('light');
+    localStorage.setItem('ajn_theme', isLight ? 'light' : 'dark');
+    const icon = themeToggle.querySelector('i');
+    if (icon) icon.className = isLight ? 'fas fa-sun' : 'fas fa-moon';
+  });
+  // initial icon
+  const isLightInit = document.body.classList.contains('light');
+  themeToggle.querySelector('i').className = isLightInit ? 'fas fa-sun' : 'fas fa-moon';
+  
+  function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+  renderFavorites();
+  if (!currentPlaylist.length) { currentPlaylist = [{ name: "Demo HLS", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }]; renderPlaylist(); }
+  loadCarouselNews();
+  fetchAJNArchiveTiles();
+</script>
 </body>
 </html>
